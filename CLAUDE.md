@@ -8,6 +8,9 @@ tab, and Web Audio plays it Songsterr-style with a moving cursor. Purpose is
 so practice features (tempo slider, loop, count-in, click, guitar-off mode)
 outrank playback fidelity.
 
+The feature backlog lives in [ROADMAP.md](ROADMAP.md) — endorsed items are
+under "Up next"; move shipped items to its Shipped section.
+
 ## Commands
 
 ```sh
