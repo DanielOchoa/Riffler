@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RIFFLER — vibe-to-riff practice engine</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎸</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=IBM+Plex+Mono:ital,wght@0,400;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="mast-strip">
+        <span>EST. 2026 · PRACTICE LOUD</span>
+        <span>RIFF SHEET GENERATOR · 100% SYNTHESIZED</span>
+      </div>
+      <h1 class="brand">RIFFLER</h1>
+      <p class="tagline">PICK A VIBE → GET A RIFF → PLAY IT TILL IT'S YOURS</p>
+      <div class="hazard" aria-hidden="true"></div>
+    </header>
+
+    <main>
+      <section class="vibes" id="vibes" aria-label="Choose a vibe"></section>
+
+      <section class="deck" aria-label="Transport">
+        <button id="play" class="btn btn-play" aria-label="Play or stop">▶ PLAY</button>
+        <button id="newriff" class="btn btn-new">⟳ NEW RIFF</button>
+
+        <div class="bpm-group">
+          <label for="bpm">TEMPO</label>
+          <input type="range" id="bpm" min="50" max="200" step="1" value="120" />
+          <output id="bpm-out" for="bpm">120</output>
+          <button id="bpm-reset" class="chip" title="Reset to suggested tempo">SUGG.</button>
+        </div>
+
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" id="t-loop" checked /><span>LOOP</span></label>
+          <label class="toggle"><input type="checkbox" id="t-count" checked /><span>COUNT-IN</span></label>
+          <label class="toggle"><input type="checkbox" id="t-click" /><span>CLICK</span></label>
+          <label class="toggle"><input type="checkbox" id="t-guitar" checked /><span>GUITAR</span></label>
+        </div>
+      </section>
+
+      <section class="sheet" aria-label="Riff sheet">
+        <div class="sheet-head">
+          <div class="sheet-title">
+            RIFF SHEET <span class="riff-no">№ <span id="seed-out">····</span></span>
+          </div>
+          <div class="stamps">
+            <span class="stamp" id="key-out">KEY E</span>
+            <span class="stamp" id="tempo-out">♩=120</span>
+            <span class="stamp stamp-dim">STD TUNING (EADGBE)</span>
+          </div>
+        </div>
+        <div class="prog-row" id="prog-out"></div>
+        <div class="tabwrap" id="tabwrap"></div>
+        <div class="count-badge" id="count-badge" aria-hidden="true"></div>
+        <p class="tip"><span class="tip-label">COACH:</span> <span id="tip-out"></span></p>
+        <p class="legend">
+          PM = palm mute &nbsp;·&nbsp; <strong>+</strong> = quarter-sharp (nudge a light bend)
+          &nbsp;·&nbsp; / = slide in &nbsp;·&nbsp; bold = accent &nbsp;·&nbsp; 𝄆 𝄇 = loops
+        </p>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>[SPACE] play/stop · [N] new riff · [↑/↓] tempo</span>
+      <span>all audio synthesized live in your browser — no samples, no backend</span>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

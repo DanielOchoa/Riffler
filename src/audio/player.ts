@@ -1,0 +1,159 @@
+import type { Engine } from './engine';
+import type { Song, RiffEvent } from '../music/generator';
+import { TOTAL_STEPS, STEPS_PER_BAR } from '../music/generator';
+import type { Vibe } from '../music/vibes';
+import { pitchOf } from '../music/theory';
+
+const LOOKAHEAD_SEC = 0.14;
+const TICK_MS = 25;
+const COUNT_IN_STEPS = 16;
+
+/**
+ * Lookahead scheduler (the "tale of two clocks" pattern): a JS interval walks
+ * a step counter slightly ahead of the AudioContext clock and schedules audio
+ * at exact times. Recently scheduled steps are kept as anchors so the UI can
+ * interpolate a smooth playhead position.
+ */
+export class Player {
+  bpm = 120;
+  loop = true;
+  countIn = true;
+  clickOn = false;
+  guitarOn = true;
+  onStateChange: (() => void) | null = null;
+
+  private song: Song | null = null;
+  private vibe: Vibe | null = null;
+  private eventsByStep = new Map<number, RiffEvent[]>();
+  private timer: number | null = null;
+  private endTimer: number | null = null;
+  private step = 0;
+  private nextTime = 0;
+  private anchors: { time: number; step: number }[] = [];
+  private _playing = false;
+
+  constructor(private engine: Engine) {}
+
+  get playing() {
+    return this._playing;
+  }
+
+  setSong(song: Song, vibe: Vibe) {
+    if (this._playing) this.stop();
+    this.song = song;
+    this.vibe = vibe;
+    this.bpm = song.bpm;
+    this.engine.setTone({ drive: vibe.drive, brightness: vibe.brightness, level: vibe.level });
+    this.eventsByStep.clear();
+    for (const ev of song.events) {
+      const list = this.eventsByStep.get(ev.step) ?? [];
+      list.push(ev);
+      this.eventsByStep.set(ev.step, list);
+    }
+  }
+
+  start() {
+    if (!this.song || !this.vibe || this._playing) return;
+    void this.engine.ctx.resume();
+    this._playing = true;
+    this.step = this.countIn ? -COUNT_IN_STEPS : 0;
+    this.nextTime = this.engine.ctx.currentTime + 0.12;
+    this.anchors = [];
+    this.timer = window.setInterval(() => this.tick(), TICK_MS);
+    this.onStateChange?.();
+  }
+
+  stop() {
+    if (this.timer !== null) window.clearInterval(this.timer);
+    if (this.endTimer !== null) window.clearTimeout(this.endTimer);
+    this.timer = null;
+    this.endTimer = null;
+    if (this._playing) this.engine.panic();
+    this._playing = false;
+    this.anchors = [];
+    this.onStateChange?.();
+  }
+
+  toggle() {
+    this._playing ? this.stop() : this.start();
+  }
+
+  /** Current position as a fractional step (negative during count-in), or null. */
+  position(): number | null {
+    if (!this._playing || this.anchors.length === 0) return null;
+    const now = this.engine.ctx.currentTime;
+    let anchor = this.anchors[0];
+    for (const a of this.anchors) {
+      if (a.time <= now) anchor = a;
+      else break;
+    }
+    const stepDur = 60 / (this.bpm * 4);
+    const frac = Math.min(1, Math.max(0, (now - anchor.time) / stepDur));
+    return anchor.step + frac;
+  }
+
+  private stepDur(): number {
+    return 60 / (this.bpm * 4);
+  }
+
+  private tick() {
+    const ctx = this.engine.ctx;
+    while (this.nextTime < ctx.currentTime + LOOKAHEAD_SEC) {
+      this.scheduleStep(this.step, this.nextTime);
+      this.anchors.push({ time: this.nextTime, step: this.step });
+      this.nextTime += this.stepDur();
+      this.step++;
+      if (this.step >= TOTAL_STEPS) {
+        if (this.loop) {
+          this.step = 0;
+        } else {
+          const msLeft = (this.nextTime - ctx.currentTime + 0.4) * 1000;
+          if (this.timer !== null) window.clearInterval(this.timer);
+          this.timer = null;
+          this.endTimer = window.setTimeout(() => {
+            this.endTimer = null;
+            this._playing = false;
+            this.anchors = [];
+            this.onStateChange?.();
+          }, msLeft);
+          break;
+        }
+      }
+    }
+    // Drop anchors older than a second; keep the most recent ones for the UI.
+    const cutoff = ctx.currentTime - 1;
+    while (this.anchors.length > 2 && this.anchors[1].time < cutoff) {
+      this.anchors.shift();
+    }
+  }
+
+  private scheduleStep(step: number, time: number) {
+    if (!this.song || !this.vibe) return;
+
+    if (step < 0) {
+      // Count-in bar: clicks on the quarters only.
+      if (((step % 4) + 4) % 4 === 0) this.engine.click(time, step === -COUNT_IN_STEPS);
+      return;
+    }
+
+    const within = step % STEPS_PER_BAR;
+    const d = this.vibe.drums;
+    if (d.kick[within]) this.engine.kick(time, d.kick[within]);
+    if (d.snare[within]) this.engine.snare(time, d.snare[within]);
+    if (d.hat[within]) this.engine.hat(time, d.hat[within]);
+    if (this.clickOn && within % 4 === 0) this.engine.click(time, within === 0);
+
+    if (!this.guitarOn) return;
+    const events = this.eventsByStep.get(step);
+    if (!events) return;
+    for (const ev of events) {
+      const vel = ev.accent ? 1 : 0.78;
+      const hold = ev.durSteps * this.stepDur();
+      // Downstroke strum: low strings first, ~4ms apart.
+      const notes = [...ev.notes].sort((a, b) => b.str - a.str);
+      notes.forEach((n, i) => {
+        this.engine.pluck(time + i * 0.004, pitchOf(n), vel, ev.pm, hold);
+      });
+    }
+  }
+}
