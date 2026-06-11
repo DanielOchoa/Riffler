@@ -1,4 +1,6 @@
-# RIFFLER
+<p align="center">
+  <img src="assets/riffler.jpg" alt="RIFFLER" width="700" />
+</p>
 
 Vibe-to-riff practice engine. Pick a vibe (garage stomp, heavy groove,
 microtonal psych, desert fuzz, doom ritual), get a generated 4-bar chord
