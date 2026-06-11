@@ -1,6 +1,6 @@
 import './style.css';
 import { VIBES, vibeById, type Vibe } from './music/vibes';
-import { generate, type Song } from './music/generator';
+import { generate, totalSteps, STEPS_PER_BAR, type Song } from './music/generator';
 import { Engine } from './audio/engine';
 import { Player } from './audio/player';
 import { renderTab, moveCursor, hideCursor, type TabView } from './tab';
@@ -20,6 +20,7 @@ const keyOut = $('#key-out');
 const tempoOut = $('#tempo-out');
 const progOut = $('#prog-out');
 const tipOut = $('#tip-out');
+const segEl = $('#seg-section');
 
 let engine: Engine | null = null;
 let player: Player | null = null;
@@ -27,6 +28,7 @@ let vibe: Vibe = VIBES[0];
 let song: Song;
 let view: TabView;
 let highlighted = -1;
+let selectedSection: number | 'full' = 'full';
 
 // ----- URL hash (#v=garage&s=1a2b3c) so riffs are shareable/reload-safe -----
 
@@ -72,11 +74,33 @@ function syncVibeCards() {
   });
 }
 
+// ----- loop region (full song / one section) -----
+
+function regionFor(): { start: number; end: number } {
+  if (selectedSection !== 'full') {
+    const sec = song.sections[selectedSection];
+    if (sec) {
+      return {
+        start: sec.startBar * STEPS_PER_BAR,
+        end: (sec.startBar + sec.barCount) * STEPS_PER_BAR,
+      };
+    }
+  }
+  return { start: 0, end: totalSteps(song) };
+}
+
+function applyRegion() {
+  if (!player) return;
+  const r = regionFor();
+  player.setRegion(r.start, r.end);
+}
+
 // ----- song lifecycle -----
 
 function loadSong(s: Song) {
   song = s;
   player?.setSong(song, vibe);
+  applyRegion();
 
   view = renderTab(song);
   tabwrap.replaceChildren(view.svg);
@@ -86,15 +110,26 @@ function loadSong(s: Song) {
   keyOut.textContent = `KEY ${song.keyName}m`;
   tempoOut.textContent = `♩=${song.bpm} SUGG.`;
   tipOut.textContent = vibe.tip;
-  progOut.replaceChildren(
-    ...song.bars.map((b, i) => {
+
+  // Progression chips, grouped by section.
+  const chips: HTMLElement[] = [];
+  for (const sec of song.sections) {
+    const label = document.createElement('span');
+    label.className = 'prog-sec-label';
+    label.textContent = sec.name;
+    chips.push(label);
+    for (let i = sec.startBar; i < sec.startBar + sec.barCount; i++) {
+      const bar = song.bars[i];
       const chip = document.createElement('span');
       chip.className = 'prog-chip';
-      chip.textContent = b.chordName;
-      if (i > 0 && song.bars[i - 1].chordName === b.chordName) chip.classList.add('repeat');
-      return chip;
-    }),
-  );
+      chip.textContent = bar.chordName;
+      if (i > sec.startBar && song.bars[i - 1].chordName === bar.chordName) {
+        chip.classList.add('repeat');
+      }
+      chips.push(chip);
+    }
+  }
+  progOut.replaceChildren(...chips);
 
   bpmSlider.value = String(song.bpm);
   bpmOut.textContent = String(song.bpm);
@@ -124,6 +159,7 @@ function ensureAudio() {
     player.onStateChange = syncTransport;
     player.setSong(song, vibe);
     player.bpm = Number(bpmSlider.value);
+    applyRegion();
   }
 }
 
@@ -156,16 +192,17 @@ function frame() {
     requestAnimationFrame(frame);
     return;
   }
-  if (pos < 0) {
+  const { start, end } = regionFor();
+  if (pos < start) {
     // Count-in: big 4-3-2-1 over the sheet.
     hideCursor(view);
-    countBadge.textContent = String(Math.ceil(-pos / 4));
+    countBadge.textContent = String(Math.ceil((start - pos) / 4));
     countBadge.classList.add('show');
     setHighlight(-1);
   } else {
     countBadge.classList.remove('show');
     moveCursor(view, pos);
-    const step = Math.min(63, Math.floor(pos));
+    const step = Math.min(end - 1, Math.floor(pos));
     setHighlight(view.evAtStep[step] ?? -1);
   }
   requestAnimationFrame(frame);
@@ -178,6 +215,14 @@ playBtn.addEventListener('click', () => {
   player!.toggle();
 });
 newBtn.addEventListener('click', newRiff);
+
+segEl.querySelectorAll<HTMLButtonElement>('.seg-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    segEl.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('on', b === btn));
+    selectedSection = btn.dataset.sec === 'full' ? 'full' : Number(btn.dataset.sec);
+    applyRegion(); // restarts (with count-in) if currently playing
+  });
+});
 
 bpmSlider.addEventListener('input', () => {
   bpmOut.textContent = bpmSlider.value;

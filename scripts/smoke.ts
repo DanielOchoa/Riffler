@@ -1,10 +1,10 @@
 /**
- * Generator smoke test: `npm run smoke`.
- * Generates many riffs per vibe, asserts they're playable, and prints one
+ * Generator smoke test.
+ * Generates many songs per vibe, asserts they're playable, and prints one
  * ASCII tab per vibe for an eyeball check.
  */
 import { VIBES } from '../src/music/vibes';
-import { generate, STEPS_PER_BAR, TOTAL_STEPS } from '../src/music/generator';
+import { generate, totalSteps, STEPS_PER_BAR } from '../src/music/generator';
 import { OPEN_MIDI } from '../src/music/theory';
 
 let failures = 0;
@@ -18,11 +18,22 @@ const check = (cond: boolean, msg: string) => {
 for (const vibe of VIBES) {
   for (let seed = 1; seed <= 200; seed++) {
     const song = generate(vibe, seed * 2654435761);
+    const steps = totalSteps(song);
+    check(song.bars.length === 8, `${vibe.id}/${seed}: ${song.bars.length} bars`);
+    check(song.sections.length === 2, `${vibe.id}/${seed}: sections`);
     check(song.events.length > 0, `${vibe.id}/${seed}: no events`);
     check(song.bpm >= vibe.tempo[0] && song.bpm <= vibe.tempo[1], `${vibe.id}/${seed}: bpm ${song.bpm}`);
+    for (const sec of song.sections) {
+      const lo = sec.startBar * STEPS_PER_BAR;
+      const hi = (sec.startBar + sec.barCount) * STEPS_PER_BAR;
+      check(
+        song.events.some((e) => e.step >= lo && e.step < hi),
+        `${vibe.id}/${seed}: empty ${sec.name}`,
+      );
+    }
     let prev = -1;
     for (const ev of song.events) {
-      check(ev.step >= 0 && ev.step < TOTAL_STEPS, `${vibe.id}/${seed}: step ${ev.step}`);
+      check(ev.step >= 0 && ev.step < steps, `${vibe.id}/${seed}: step ${ev.step}`);
       check(ev.step >= prev, `${vibe.id}/${seed}: events out of order`);
       prev = ev.step;
       check(ev.durSteps >= 1, `${vibe.id}/${seed}: dur ${ev.durSteps}`);
@@ -38,24 +49,32 @@ for (const vibe of VIBES) {
 
   // Print one example
   const song = generate(vibe, 12345);
-  console.log(`\n=== ${vibe.name} — key ${song.keyName}m, ♩=${song.bpm}, ${song.progressionLabel} ===`);
-  const grid: string[][] = Array.from({ length: 6 }, () => Array(TOTAL_STEPS).fill('--'));
-  for (const ev of song.events) {
-    for (const n of ev.notes) {
-      const label = String(n.fret) + (n.micro > 0 ? '+' : '');
-      grid[n.str - 1][ev.step] = label.padEnd(2, '-');
-    }
-  }
+  const steps = totalSteps(song);
+  console.log(`\n=== ${vibe.name} — key ${song.keyName}m, ♩=${song.bpm} ===`);
   const names = ['e', 'B', 'G', 'D', 'A', 'E'];
-  for (let s = 0; s < 6; s++) {
-    let line = names[s] + '|';
-    for (let step = 0; step < TOTAL_STEPS; step++) {
-      line += grid[s][step];
-      if (step % STEPS_PER_BAR === STEPS_PER_BAR - 1) line += '|';
+  for (const sec of song.sections) {
+    const lo = sec.startBar * STEPS_PER_BAR;
+    const hi = (sec.startBar + sec.barCount) * STEPS_PER_BAR;
+    const chords = song.bars.slice(sec.startBar, sec.startBar + sec.barCount).map((b) => b.chordName);
+    console.log(`-- ${sec.name}: ${chords.join(' | ')}`);
+    const grid: string[][] = Array.from({ length: 6 }, () => Array(steps).fill('--'));
+    for (const ev of song.events) {
+      if (ev.step < lo || ev.step >= hi) continue;
+      for (const n of ev.notes) {
+        const label = String(n.fret) + (n.micro > 0 ? '+' : '');
+        grid[n.str - 1][ev.step] = label.padEnd(2, '-');
+      }
     }
-    console.log(line);
+    for (let s = 0; s < 6; s++) {
+      let line = names[s] + '|';
+      for (let step = lo; step < hi; step++) {
+        line += grid[s][step];
+        if (step % STEPS_PER_BAR === STEPS_PER_BAR - 1) line += '|';
+      }
+      console.log(line);
+    }
   }
 }
 
-console.log(failures === 0 ? '\nOK: 1000 riffs, all playable.' : `\n${failures} failures`);
+console.log(failures === 0 ? '\nOK: 1000 songs, all playable.' : `\n${failures} failures`);
 process.exit(failures === 0 ? 0 : 1);

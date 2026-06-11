@@ -1,9 +1,9 @@
-import type { TabNote, RootPos } from './theory';
-import { OPEN_MIDI, noteName, placeRoot, powerChord } from './theory';
+import type { TabNote, RootPos, Voicing } from './theory';
+import { OPEN_MIDI, noteName, placeRoot, powerChord, chooseVoicing } from './theory';
 import type { Vibe } from './vibes';
 
 export interface RiffEvent {
-  step: number; // absolute 16th step, 0..63 (4 bars of 4/4)
+  step: number; // absolute 16th step from song start
   durSteps: number;
   notes: TabNote[];
   pm: boolean;
@@ -17,6 +17,12 @@ export interface BarInfo {
   rootPc: number;
 }
 
+export interface SectionInfo {
+  name: string; // 'VERSE' | 'CHORUS'
+  startBar: number;
+  barCount: number;
+}
+
 export interface Song {
   vibeId: string;
   seed: number;
@@ -24,13 +30,16 @@ export interface Song {
   keyName: string;
   bpm: number;
   bars: BarInfo[];
+  sections: SectionInfo[];
   events: RiffEvent[]; // sorted by step
-  progressionLabel: string;
 }
 
 export const STEPS_PER_BAR = 16;
-export const BARS = 4;
-export const TOTAL_STEPS = STEPS_PER_BAR * BARS;
+export const SECTION_BARS = 4;
+
+export function totalSteps(song: Song): number {
+  return song.bars.length * STEPS_PER_BAR;
+}
 
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -46,6 +55,23 @@ export function mulberry32(seed: number): () => number {
 const pick = <T>(rng: () => number, arr: T[]): T => arr[Math.floor(rng() * arr.length)];
 const rint = (rng: () => number, lo: number, hi: number) =>
   lo + Math.floor(rng() * (hi - lo + 1));
+
+/**
+ * Chord quality per semitone offset from the key root, assuming the aeolian /
+ * rock-minor world these vibes live in (i, bIII, iv, v, bVI, bVII...).
+ * Vibes can override (e.g. phrygian dominant's major i).
+ */
+const OFFSET_QUALITY: Record<number, 'maj' | 'min'> = {
+  0: 'min',
+  1: 'maj',
+  2: 'maj',
+  3: 'maj',
+  5: 'min',
+  6: 'maj',
+  7: 'min',
+  8: 'maj',
+  10: 'maj',
+};
 
 /** Map a progression of N chords onto 4 bars. */
 function stretchProgression(rng: () => number, len: number): number[] {
@@ -105,10 +131,6 @@ class LickWalker {
     private micro?: { degrees: number[]; chance: number },
   ) {}
 
-  reset() {
-    this.idx = 0;
-  }
-
   private offsetAt(idx: number): number {
     const len = this.scale.length;
     const deg = ((idx % len) + len) % len;
@@ -159,36 +181,64 @@ class LickWalker {
   }
 }
 
-export function generate(vibe: Vibe, seed: number): Song {
-  const rng = mulberry32(seed);
+interface SectionResult {
+  bars: BarInfo[];
+  events: RiffEvent[]; // section-local steps
+  endAnchorFret: number;
+  progIdx: number;
+}
 
-  const keyPc = pick(rng, vibe.keys);
-  const bpm = rint(rng, vibe.tempo[0], vibe.tempo[1]);
-  const prog = pick(rng, vibe.progressions);
+function generateSection(
+  vibe: Vibe,
+  rng: () => number,
+  keyPc: number,
+  type: 'verse' | 'chorus',
+  walker: LickWalker,
+  startAnchorFret: number | null,
+  avoidProgIdx: number | null,
+): SectionResult {
+  // Chorus prefers a different progression than the verse, when there's a choice.
+  let progIdx = Math.floor(rng() * vibe.progressions.length);
+  if (avoidProgIdx !== null && vibe.progressions.length > 1 && progIdx === avoidProgIdx) {
+    progIdx = (progIdx + 1) % vibe.progressions.length;
+  }
+  const prog = vibe.progressions[progIdx];
   const barChordIdx = stretchProgression(rng, prog.length);
 
   // Place each bar's chord root on the neck, near the previous one.
   const bars: BarInfo[] = [];
   const anchors: RootPos[] = [];
-  let prevFret: number | null = null;
-  for (let b = 0; b < BARS; b++) {
-    const pc = (keyPc + prog[barChordIdx[b]]) % 12;
+  const voicings: (Voicing | null)[] = [];
+  let prevFret = startAnchorFret;
+  for (let b = 0; b < SECTION_BARS; b++) {
+    const off = prog[barChordIdx[b]];
+    const pc = (keyPc + off) % 12;
     const pos = placeRoot(pc, prevFret);
     prevFret = pos.fret;
     anchors.push(pos);
-    bars.push({ chordName: noteName(pc) + '5', rootPc: pc });
+
+    if (type === 'chorus') {
+      const quality = vibe.chordQuality?.[off] ?? OFFSET_QUALITY[off] ?? 'min';
+      const v = chooseVoicing(pc, quality, vibe.voicings, pos, vibe.octaveChord);
+      voicings.push(v);
+      bars.push({ chordName: v.name, rootPc: pc });
+    } else {
+      voicings.push(null);
+      bars.push({ chordName: noteName(pc) + '5', rootPc: pc });
+    }
   }
 
   // Riffs repeat: bars 1–2 share a rhythm, bar 3 sometimes varies, bar 4 fills.
-  const r1 = pick(rng, vibe.rhythms);
-  const r3 = rng() < 0.35 ? pick(rng, vibe.rhythms) : r1;
-  const r4 = rng() < 0.7 ? pick(rng, vibe.fills) : r1;
+  const pool = type === 'chorus' ? vibe.chorusRhythms : vibe.rhythms;
+  const r1 = pick(rng, pool);
+  const r3 = rng() < 0.35 ? pick(rng, pool) : r1;
+  const fillChance = type === 'chorus' ? 0.3 : 0.7;
+  const r4 = rng() < fillChance ? pick(rng, vibe.fills) : r1;
   const patterns = [r1, r1, r3, r4];
 
-  const walker = new LickWalker(rng, vibe.scale, vibe.micro);
   const events: RiffEvent[] = [];
 
-  for (let b = 0; b < BARS; b++) {
+  for (let b = 0; b < SECTION_BARS; b++) {
     const anchor = anchors[b];
     const rootMidi = OPEN_MIDI[anchor.str - 1] + anchor.fret;
     const rootNote: TabNote = { str: anchor.str, fret: anchor.fret, micro: 0 };
@@ -201,7 +251,8 @@ export function generate(vibe: Vibe, seed: number): Song {
       let kind: RiffEvent['kind'];
 
       if (hit.ch === 'C' || hit.ch === 'c') {
-        notes = powerChord(anchor, vibe.octaveChord);
+        const v = voicings[b];
+        notes = v ? v.notes.map((n) => ({ ...n })) : powerChord(anchor, vibe.octaveChord);
         kind = 'chord';
       } else if (hit.ch === 'X' || hit.ch === 'x') {
         notes = [{ ...rootNote }];
@@ -233,17 +284,39 @@ export function generate(vibe: Vibe, seed: number): Song {
     }
   }
 
-  // Usually resolve the last lick back to home so the loop lands.
+  // Usually resolve the section's last lick back to its home chord root.
   const last = events[events.length - 1];
   if (last && last.kind === 'lick' && rng() < 0.6) {
     last.notes = [{ str: anchors[0].str, fret: anchors[0].fret, micro: 0 }];
     last.slide = false;
   }
 
-  const chordSeq: string[] = [];
-  for (const bar of bars) {
-    if (chordSeq[chordSeq.length - 1] !== bar.chordName) chordSeq.push(bar.chordName);
-  }
+  return { bars, events, endAnchorFret: prevFret ?? 2, progIdx };
+}
+
+export function generate(vibe: Vibe, seed: number): Song {
+  const rng = mulberry32(seed);
+
+  const keyPc = pick(rng, vibe.keys);
+  const bpm = rint(rng, vibe.tempo[0], vibe.tempo[1]);
+  const walker = new LickWalker(rng, vibe.scale, vibe.micro);
+
+  const verse = generateSection(vibe, rng, keyPc, 'verse', walker, null, null);
+  const chorus = generateSection(
+    vibe,
+    rng,
+    keyPc,
+    'chorus',
+    walker,
+    verse.endAnchorFret,
+    verse.progIdx,
+  );
+
+  const verseSteps = SECTION_BARS * STEPS_PER_BAR;
+  const events = [
+    ...verse.events,
+    ...chorus.events.map((ev) => ({ ...ev, step: ev.step + verseSteps })),
+  ];
 
   return {
     vibeId: vibe.id,
@@ -251,8 +324,11 @@ export function generate(vibe: Vibe, seed: number): Song {
     keyPc,
     keyName: noteName(keyPc),
     bpm,
-    bars,
+    bars: [...verse.bars, ...chorus.bars],
+    sections: [
+      { name: 'VERSE', startBar: 0, barCount: SECTION_BARS },
+      { name: 'CHORUS', startBar: SECTION_BARS, barCount: SECTION_BARS },
+    ],
     events,
-    progressionLabel: chordSeq.join(' – '),
   };
 }

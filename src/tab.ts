@@ -1,9 +1,10 @@
 import type { Song, RiffEvent } from './music/generator';
-import { STEPS_PER_BAR } from './music/generator';
+import { STEPS_PER_BAR, totalSteps } from './music/generator';
 
 /**
- * Renders a 4-bar riff as a 2-row tab sheet (2 bars per row) and exposes the
- * geometry the playhead needs. All sizes are viewBox units; CSS scales it.
+ * Renders a song as a tab sheet, 2 bars per row, with section tags (VERSE /
+ * CHORUS) above the rows that start a section. Returns the geometry the
+ * playhead needs. All sizes are viewBox units; CSS scales it.
  */
 const COL = 24; // width of one 16th-note column
 const GUT = 36; // left gutter for string names
@@ -16,10 +17,9 @@ const STAFF_TOP = 36;
 const STAFF_H = STR_GAP * 5;
 const PM_Y = STAFF_TOP + STAFF_H + 22;
 const ROW_H = 150;
-const ROWS = 2;
+const SECTION_PAD = 26; // extra space above a row that starts a section
 
 export const TAB_W = GUT + PAD * 2 + STEPS_PER_ROW * COL;
-export const TAB_H = ROWS * ROW_H;
 
 const STRING_LABELS = ['e', 'B', 'G', 'D', 'A', 'E'];
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -30,6 +30,7 @@ export interface TabView {
   evAtStep: number[];
   cursor: SVGGElement;
   eventGroups: SVGGElement[];
+  posToXY(pos: number): { x: number; rowTop: number };
 }
 
 function el<K extends keyof SVGElementTagNameMap>(
@@ -43,52 +44,66 @@ function el<K extends keyof SVGElementTagNameMap>(
   return node;
 }
 
-export function stepX(stepInRow: number): number {
+function stepX(stepInRow: number): number {
   return GUT + PAD + stepInRow * COL + COL / 2;
 }
 
-export function posToXY(pos: number): { x: number; rowTop: number } {
-  const p = Math.max(0, Math.min(STEPS_PER_ROW * ROWS, pos));
-  const row = Math.min(ROWS - 1, Math.floor(p / STEPS_PER_ROW));
-  const within = p - row * STEPS_PER_ROW;
-  return { x: GUT + PAD + within * COL + COL / 2, rowTop: row * ROW_H };
-}
-
-function stringY(rowTop: number, str: number): number {
-  return rowTop + STAFF_TOP + (str - 1) * STR_GAP;
-}
-
 export function renderTab(song: Song): TabView {
+  const steps = totalSteps(song);
+  const rows = Math.ceil(song.bars.length / BARS_PER_ROW);
+
+  // Rows that start a section get extra headroom for the section tag.
+  const sectionAtRow = new Map<number, string>();
+  for (const s of song.sections) {
+    sectionAtRow.set(Math.floor(s.startBar / BARS_PER_ROW), s.name);
+  }
+  const rowTops: number[] = [];
+  let y = 0;
+  for (let r = 0; r < rows; r++) {
+    if (sectionAtRow.has(r)) y += SECTION_PAD;
+    rowTops.push(y);
+    y += ROW_H;
+  }
+  const tabH = y;
+
   const svg = el('svg', {
-    viewBox: `0 0 ${TAB_W} ${TAB_H}`,
+    viewBox: `0 0 ${TAB_W} ${tabH}`,
     class: 'tab-svg',
     role: 'img',
-    'aria-label': `Guitar tab, 4 bars in ${song.keyName}`,
+    'aria-label': `Guitar tab, ${song.bars.length} bars in ${song.keyName}`,
   }) as SVGSVGElement;
 
-  for (let row = 0; row < ROWS; row++) {
-    const rowTop = row * ROW_H;
+  const stringY = (rowTop: number, str: number) => rowTop + STAFF_TOP + (str - 1) * STR_GAP;
+
+  for (let row = 0; row < rows; row++) {
+    const rowTop = rowTops[row];
+
+    // Section tag
+    const secName = sectionAtRow.get(row);
+    if (secName) {
+      const w = secName.length * 9 + 16;
+      svg.appendChild(
+        el('rect', { x: GUT + PAD - 12, y: rowTop - 16, width: w, height: 17, class: 'section-tag-bg' }),
+      );
+      svg.appendChild(
+        el('text', { x: GUT + PAD - 12 + w / 2, y: rowTop - 3.5, class: 'section-tag', 'text-anchor': 'middle' }, secName),
+      );
+    }
 
     // String labels + staff lines
     for (let s = 1; s <= 6; s++) {
-      const y = stringY(rowTop, s);
+      const sy = stringY(rowTop, s);
       svg.appendChild(
-        el('text', { x: GUT - 10, y: y + 3.5, class: 'str-label', 'text-anchor': 'end' }, STRING_LABELS[s - 1]),
+        el('text', { x: GUT - 10, y: sy + 3.5, class: 'str-label', 'text-anchor': 'end' }, STRING_LABELS[s - 1]),
       );
       svg.appendChild(
-        el('line', {
-          x1: GUT,
-          y1: y,
-          x2: TAB_W - PAD + 6,
-          y2: y,
-          class: 'staff-line',
-        }),
+        el('line', { x1: GUT, y1: sy, x2: TAB_W - PAD + 6, y2: sy, class: 'staff-line' }),
       );
     }
 
     for (let b = 0; b <= BARS_PER_ROW; b++) {
       const x = GUT + PAD + b * STEPS_PER_BAR * COL - (b === 0 ? PAD : COL / 2);
-      const isSongEdge = (row === 0 && b === 0) || (row === ROWS - 1 && b === BARS_PER_ROW);
+      const isSongEdge = (row === 0 && b === 0) || (row === rows - 1 && b === BARS_PER_ROW);
       svg.appendChild(
         el('line', {
           x1: x,
@@ -112,6 +127,7 @@ export function renderTab(song: Song): TabView {
     // Beat ticks + chord names
     for (let b = 0; b < BARS_PER_ROW; b++) {
       const barIdx = row * BARS_PER_ROW + b;
+      if (barIdx >= song.bars.length) break;
       for (let beat = 0; beat < 4; beat++) {
         const x = stepX(b * STEPS_PER_BAR + beat * 4);
         svg.appendChild(
@@ -124,6 +140,8 @@ export function renderTab(song: Song): TabView {
           }),
         );
       }
+      // A chord name is "fresh" when it changes from the previous bar (or starts a section).
+      const sectionStart = song.sections.some((s) => s.startBar === barIdx);
       const prev = barIdx > 0 ? song.bars[barIdx - 1].chordName : null;
       const name = song.bars[barIdx].chordName;
       svg.appendChild(
@@ -132,7 +150,7 @@ export function renderTab(song: Song): TabView {
           {
             x: stepX(b * STEPS_PER_BAR) - COL / 2,
             y: rowTop + CHORD_Y,
-            class: name !== prev ? 'chord-name fresh' : 'chord-name',
+            class: name !== prev || sectionStart ? 'chord-name fresh' : 'chord-name',
           },
           name,
         ),
@@ -150,7 +168,7 @@ export function renderTab(song: Song): TabView {
   }
   for (const r of pmRanges) {
     const row = Math.floor(r.start / STEPS_PER_ROW);
-    const rowTop = row * ROW_H;
+    const rowTop = rowTops[row];
     const end = Math.min(r.end, (row + 1) * STEPS_PER_ROW - 1); // clamp to row
     const x1 = stepX(r.start % STEPS_PER_ROW) - 6;
     const x2 = stepX(end % STEPS_PER_ROW) + 6;
@@ -163,7 +181,7 @@ export function renderTab(song: Song): TabView {
   }
 
   // Notes
-  const evAtStep = new Array<number>(STEPS_PER_ROW * ROWS).fill(-1);
+  const evAtStep = new Array<number>(steps).fill(-1);
   const eventGroups: SVGGElement[] = [];
 
   song.events.forEach((ev: RiffEvent, idx: number) => {
@@ -171,24 +189,23 @@ export function renderTab(song: Song): TabView {
       evAtStep[s] = idx;
     }
     const row = Math.floor(ev.step / STEPS_PER_ROW);
-    const rowTop = row * ROW_H;
+    const rowTop = rowTops[row];
     const x = stepX(ev.step % STEPS_PER_ROW);
     const g = el('g', { class: 'ev' }) as SVGGElement;
 
     if (ev.slide) {
-      const y = stringY(rowTop, ev.notes[0].str);
-      g.appendChild(el('text', { x: x - COL * 0.58, y: y + 4, class: 'slide-mark' }, '/'));
+      const sy = stringY(rowTop, ev.notes[0].str);
+      g.appendChild(el('text', { x: x - COL * 0.58, y: sy + 4, class: 'slide-mark' }, '/'));
     }
     for (const n of ev.notes) {
-      const y = stringY(rowTop, n.str);
+      const sy = stringY(rowTop, n.str);
       const t = el(
         'text',
-        { x, y: y + 4, class: ev.accent ? 'fret acc' : 'fret', 'text-anchor': 'middle' },
+        { x, y: sy + 4, class: ev.accent ? 'fret acc' : 'fret', 'text-anchor': 'middle' },
         String(n.fret),
       );
       if (n.micro > 0) {
-        const plus = el('tspan', { dy: -5, class: 'micro-mark' }, '+');
-        t.appendChild(plus);
+        t.appendChild(el('tspan', { dy: -5, class: 'micro-mark' }, '+'));
       }
       g.appendChild(t);
     }
@@ -213,11 +230,18 @@ export function renderTab(song: Song): TabView {
   );
   svg.appendChild(cursor);
 
-  return { svg, evAtStep, cursor, eventGroups };
+  const posToXY = (pos: number) => {
+    const p = Math.max(0, Math.min(steps, pos));
+    const row = Math.min(rows - 1, Math.floor(p / STEPS_PER_ROW));
+    const within = p - row * STEPS_PER_ROW;
+    return { x: GUT + PAD + within * COL + COL / 2, rowTop: rowTops[row] };
+  };
+
+  return { svg, evAtStep, cursor, eventGroups, posToXY };
 }
 
 export function moveCursor(view: TabView, pos: number) {
-  const { x, rowTop } = posToXY(pos);
+  const { x, rowTop } = view.posToXY(pos);
   view.cursor.setAttribute('transform', `translate(${x}, ${rowTop})`);
   view.cursor.setAttribute('visibility', 'visible');
 }

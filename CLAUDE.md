@@ -33,12 +33,17 @@ vibes.ts ──recipe──▶ generator.ts ──Song──▶ tab.ts (SVG rend
 main.ts wires UI ◀── style.css (all theming, including SVG tab classes)
 ```
 
-- `src/music/theory.ts` — tuning, MIDI math, root placement, power chords.
-  Strings are indexed **1..6 where 6 = low E**; `OPEN_MIDI[str - 1]`.
+- `src/music/theory.ts` — tuning, MIDI math, root placement, power chords,
+  and the chord-voicing library (open shapes, movable D/G/B triads, high 5th
+  stabs) with `chooseVoicing()` palette fallback. Strings are indexed
+  **1..6 where 6 = low E**; `OPEN_MIDI[str - 1]`.
 - `src/music/vibes.ts` — one `Vibe` object per style: keys, scale, progression
-  templates, rhythm patterns, drum grid, amp settings, accent color.
-- `src/music/generator.ts` — seeded RNG (mulberry32), maps progressions onto
-  4 bars, lick walker random-walks the scale near the chord-root anchor.
+  templates, verse + chorus rhythm patterns, voicing palette, drum grid, amp
+  settings, accent color.
+- `src/music/generator.ts` — seeded RNG (mulberry32); generates a VERSE and a
+  CHORUS section (4 bars each), lick walker random-walks the scale near the
+  chord-root anchor. Chord quality comes from `OFFSET_QUALITY` (aeolian
+  assumption), overridable per vibe via `chordQuality`.
 - `src/audio/engine.ts` — Karplus-Strong guitar rendered into cached
   AudioBuffers → tanh waveshaper amp; synthesized kick/snare/hat/click.
 - `src/audio/player.ts` — lookahead scheduler ("tale of two clocks"); keeps
@@ -56,7 +61,15 @@ main.ts wires UI ◀── style.css (all theming, including SVG tab classes)
   `C/c` chord (accented/stab), `X/x` root chug (palm-muted), `L/l` lick note,
   `~` extends the previous event one step, `.` rest. `vibes.ts` throws at
   import time on wrong lengths; the smoke test catches musical breakage.
-- **Time grid**: 16 steps/bar × 4 bars = 64 steps. Count-in is steps −16..−1.
+- **Time grid**: 16 steps/bar; a song is two 4-bar sections (VERSE + CHORUS)
+  = 128 steps. Playback is scoped to a loop region `[start, end)` (the
+  FULL/VERSE/CHORUS switcher); count-in occupies the 16 steps before region
+  start, so "step < regionStart" means count-in, not just "step < 0".
+- **Distortion vs thirds**: verses are power chords only; full (third-bearing)
+  chords appear via chorus voicing palettes, and big chords are picked softer
+  per string (`chordScale` in player.ts) so the waveshaper cleans up — the
+  "roll the volume knob back" move. Doom's palette stays `['power']` on
+  purpose.
 - **Guitar synthesis is rendered KS buffers, not a DelayNode feedback loop** —
   Web Audio clamps cycle delays to 128 samples, which detunes notes above
   ~344 Hz. Rendered buffers also give exact frequencies, which the microtonal

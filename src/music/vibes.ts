@@ -8,6 +8,8 @@
  *   ~  extend the previous event by one step
  *   .  rest
  */
+import type { VoicingKind } from './theory';
+
 export interface DrumPattern {
   kick: number[];
   snare: number[];
@@ -28,6 +30,9 @@ export interface Vibe {
   progressions: number[][]; // semitone offsets from key root, power chords
   rhythms: string[];
   fills: string[]; // bar-4 candidates, lick-heavy
+  chorusRhythms: string[]; // strummy, chord-forward patterns for the chorus
+  voicings: VoicingKind[]; // chorus chord palette, in preference order
+  chordQuality?: Record<number, 'maj' | 'min'>; // per-offset quality overrides
   drums: DrumPattern;
   drive: number; // waveshaper intensity
   brightness: number; // post-drive lowpass Hz
@@ -61,6 +66,8 @@ export const VIBES: Vibe[] = [
       'C~~~c~~~C~~~l.l.',
     ],
     fills: ['l.l.l.l.l.l.l.l.', 'L~l.l.l~l.l.c~~~', 'l.l.x.x.l.l.X~~~'],
+    chorusRhythms: ['C~~~C~~~C~~~C~~~', 'C~~~~~C~C~~~~~~~', 'C~C~C~C~C~C~C~C~'],
+    voicings: ['open', 'power'],
     drums: {
       kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
       snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -90,6 +97,8 @@ export const VIBES: Vibe[] = [
       'X.x.x~~.X.x.x~~.',
     ],
     fills: ['l~.l~.l~x.x.L~~~', 'l..l..l.l..l..X.', 'x.x.l.l.x.x.l~l~'],
+    chorusRhythms: ['C~~~~~~.c.c.C~~~', 'C~~~~~c~C~~~~~c~', 'C~.c~.c~C~.c~.c~'],
+    voicings: ['high5', 'triad'],
     drums: {
       kick: [1, 0, 0, 0.8, 0, 0, 0.8, 0, 1, 0, 0, 0.8, 0, 0, 0.6, 0],
       snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -125,6 +134,9 @@ export const VIBES: Vibe[] = [
       'x.l.l~~.x.l.l.l.',
     ],
     fills: ['l.lll.l.l.lll.l.', 'l.l.l.lll.l.l.l.', 'lllllllll.l.l~~.'],
+    chorusRhythms: ['C~~~c~c~C~~~c~c~', 'C~C~C~C~C~C~C~C~', 'C~~~c~C~~~c~C~~~'],
+    voicings: ['triad', 'open'],
+    chordQuality: { 0: 'maj', 1: 'maj' }, // phrygian dominant: i and bII are major
     drums: {
       kick: [1, 0, 0, 0, 0, 0, 0.8, 0, 1, 0, 0, 0, 0, 0, 0.8, 0],
       snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -159,6 +171,8 @@ export const VIBES: Vibe[] = [
       'X.x.x.X.x.x.X.x.',
     ],
     fills: ['x.x.l.l.x.x.l.l.', 'l.l.x.x.l.l.x.x.', 'x.x.x.x.l.l.l.l.'],
+    chorusRhythms: ['C~c~C~c~C~c~C~c~', 'C~~~C~c~C~~~C~c~', 'C~c~c~C~C~c~c~C~'],
+    voicings: ['open-color', 'triad', 'power'],
     drums: {
       kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
       snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -193,6 +207,8 @@ export const VIBES: Vibe[] = [
       'C~~~~~~~c~c~C~~~',
     ],
     fills: ['l~~.l~~.l.l.C~~~', 'l~l~l~x.C~~~~~~~', 'C~~~~~~~l~l~l~l~'],
+    chorusRhythms: ['C~~~~~~~C~~~~~~~', 'C~~~~~~~~~~~C~~~', 'C~~~~~c~c~~~C~~~'],
+    voicings: ['power'], // full chords would be mud at this gain — and that's doom anyway
     drums: {
       kick: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0, 0, 0, 0, 0],
       snare: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
@@ -212,7 +228,7 @@ export function vibeById(id: string): Vibe {
 
 // Guard against pattern typos: every rhythm must be exactly 16 steps.
 for (const v of VIBES) {
-  for (const p of [...v.rhythms, ...v.fills]) {
+  for (const p of [...v.rhythms, ...v.fills, ...v.chorusRhythms]) {
     if (p.length !== 16) {
       throw new Error(`Vibe "${v.id}" has a pattern of length ${p.length}: "${p}"`);
     }

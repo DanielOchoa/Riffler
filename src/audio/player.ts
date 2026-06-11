@@ -1,6 +1,6 @@
 import type { Engine } from './engine';
 import type { Song, RiffEvent } from '../music/generator';
-import { TOTAL_STEPS, STEPS_PER_BAR } from '../music/generator';
+import { totalSteps, STEPS_PER_BAR } from '../music/generator';
 import type { Vibe } from '../music/vibes';
 import { pitchOf } from '../music/theory';
 
@@ -13,6 +13,10 @@ const COUNT_IN_STEPS = 16;
  * a step counter slightly ahead of the AudioContext clock and schedules audio
  * at exact times. Recently scheduled steps are kept as anchors so the UI can
  * interpolate a smooth playhead position.
+ *
+ * Playback is scoped to a loop region [regionStart, regionEnd) so the user
+ * can drill just the verse or just the chorus. Count-in occupies the 16 steps
+ * before regionStart.
  */
 export class Player {
   bpm = 120;
@@ -25,6 +29,8 @@ export class Player {
   private song: Song | null = null;
   private vibe: Vibe | null = null;
   private eventsByStep = new Map<number, RiffEvent[]>();
+  private regionStart = 0;
+  private regionEnd = 0;
   private timer: number | null = null;
   private endTimer: number | null = null;
   private step = 0;
@@ -43,6 +49,8 @@ export class Player {
     this.song = song;
     this.vibe = vibe;
     this.bpm = song.bpm;
+    this.regionStart = 0;
+    this.regionEnd = totalSteps(song);
     this.engine.setTone({ drive: vibe.drive, brightness: vibe.brightness, level: vibe.level });
     this.eventsByStep.clear();
     for (const ev of song.events) {
@@ -52,11 +60,24 @@ export class Player {
     }
   }
 
+  /** Scope playback to [start, end) steps. Restarts if currently playing. */
+  setRegion(start: number, end: number) {
+    const wasPlaying = this._playing;
+    if (wasPlaying) this.stop();
+    this.regionStart = start;
+    this.regionEnd = end;
+    if (wasPlaying) this.start();
+  }
+
+  getRegion(): { start: number; end: number } {
+    return { start: this.regionStart, end: this.regionEnd };
+  }
+
   start() {
     if (!this.song || !this.vibe || this._playing) return;
     void this.engine.ctx.resume();
     this._playing = true;
-    this.step = this.countIn ? -COUNT_IN_STEPS : 0;
+    this.step = this.regionStart - (this.countIn ? COUNT_IN_STEPS : 0);
     this.nextTime = this.engine.ctx.currentTime + 0.12;
     this.anchors = [];
     this.timer = window.setInterval(() => this.tick(), TICK_MS);
@@ -78,7 +99,7 @@ export class Player {
     this._playing ? this.stop() : this.start();
   }
 
-  /** Current position as a fractional step (negative during count-in), or null. */
+  /** Current position as a fractional step (before regionStart = count-in), or null. */
   position(): number | null {
     if (!this._playing || this.anchors.length === 0) return null;
     const now = this.engine.ctx.currentTime;
@@ -103,9 +124,9 @@ export class Player {
       this.anchors.push({ time: this.nextTime, step: this.step });
       this.nextTime += this.stepDur();
       this.step++;
-      if (this.step >= TOTAL_STEPS) {
+      if (this.step >= this.regionEnd) {
         if (this.loop) {
-          this.step = 0;
+          this.step = this.regionStart;
         } else {
           const msLeft = (this.nextTime - ctx.currentTime + 0.4) * 1000;
           if (this.timer !== null) window.clearInterval(this.timer);
@@ -130,9 +151,11 @@ export class Player {
   private scheduleStep(step: number, time: number) {
     if (!this.song || !this.vibe) return;
 
-    if (step < 0) {
+    if (step < this.regionStart) {
       // Count-in bar: clicks on the quarters only.
-      if (((step % 4) + 4) % 4 === 0) this.engine.click(time, step === -COUNT_IN_STEPS);
+      if ((this.regionStart - step) % 4 === 0) {
+        this.engine.click(time, step === this.regionStart - COUNT_IN_STEPS);
+      }
       return;
     }
 
@@ -147,12 +170,18 @@ export class Player {
     const events = this.eventsByStep.get(step);
     if (!events) return;
     for (const ev of events) {
-      const vel = ev.accent ? 1 : 0.78;
+      const size = ev.notes.length;
+      // Big chords get a softer per-string pick: less input into the waveshaper
+      // means less saturation — the "roll the volume knob back" move. The amp's
+      // compression keeps the loudness close.
+      const chordScale = size >= 4 ? 0.45 : size === 3 ? 0.62 : 1;
+      const vel = (ev.accent ? 1 : 0.78) * chordScale;
+      const strumGap = size >= 4 ? 0.011 : 0.004;
       const hold = ev.durSteps * this.stepDur();
-      // Downstroke strum: low strings first, ~4ms apart.
+      // Downstroke strum: low strings first.
       const notes = [...ev.notes].sort((a, b) => b.str - a.str);
       notes.forEach((n, i) => {
-        this.engine.pluck(time + i * 0.004, pitchOf(n), vel, ev.pm, hold);
+        this.engine.pluck(time + i * strumGap, pitchOf(n), vel, ev.pm, hold);
       });
     }
   }

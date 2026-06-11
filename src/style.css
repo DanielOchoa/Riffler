@@ -364,6 +364,38 @@ input[type='range']::-moz-range-thumb {
   color: var(--bone);
 }
 
+/* section switcher: FULL / VERSE / CHORUS */
+.seg {
+  display: flex;
+  border: 1.5px solid rgb(236 227 209 / 40%);
+}
+
+.seg-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 7px 11px;
+  background: none;
+  border: none;
+  color: var(--bone-dim);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.seg-btn + .seg-btn {
+  border-left: 1.5px solid rgb(236 227 209 / 40%);
+}
+
+.seg-btn.on {
+  background: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.seg-btn:hover:not(.on) {
+  color: var(--bone);
+}
+
 /* ---------- the riff sheet ---------- */
 
 .sheet {
@@ -448,8 +480,19 @@ input[type='range']::-moz-range-thumb {
   border-color: rgb(34 26 18 / 40%);
 }
 
-.prog-chip + .prog-chip::before {
-  content: '';
+.prog-sec-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+  padding: 2px 7px;
+  border-radius: 2px;
+  transform: rotate(-1deg);
+}
+
+.prog-sec-label:not(:first-child) {
+  margin-left: 12px;
 }
 
 .tabwrap {
@@ -491,6 +534,17 @@ input[type='range']::-moz-range-thumb {
   font-family: var(--font-mono);
   font-size: 10px;
   fill: rgb(34 26 18 / 55%);
+}
+
+.section-tag-bg {
+  fill: var(--accent);
+}
+
+.section-tag {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  fill: var(--paper);
 }
 
 .chord-name {
