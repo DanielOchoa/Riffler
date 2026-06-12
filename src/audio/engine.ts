@@ -21,6 +21,7 @@ export class Engine {
   private shaper: WaveShaperNode;
   private toneFilter: BiquadFilterNode;
   private drumBus: GainNode;
+  private bassBus: GainNode;
   private noiseBuf: AudioBuffer;
   private pluckCache = new Map<string, AudioBuffer>();
   private guitarLevel = 0.5;
@@ -69,6 +70,10 @@ export class Engine {
     this.drumBus.gain.value = 0.9;
     this.drumBus.connect(this.master);
 
+    this.bassBus = ctx.createGain();
+    this.bassBus.gain.value = 0.6;
+    this.bassBus.connect(this.master);
+
     this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const nd = this.noiseBuf.getChannelData(0);
     for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
@@ -95,13 +100,14 @@ export class Engine {
   /** Hard-mute both buses briefly — used when transport stops. */
   panic() {
     const t = this.ctx.currentTime;
-    for (const g of [this.guitarOut.gain, this.drumBus.gain]) {
+    for (const g of [this.guitarOut.gain, this.drumBus.gain, this.bassBus.gain]) {
       g.cancelScheduledValues(t);
       g.setValueAtTime(g.value, t);
       g.linearRampToValueAtTime(0.0001, t + 0.06);
     }
     this.guitarOut.gain.setValueAtTime(this.guitarLevel, t + 0.3);
     this.drumBus.gain.setValueAtTime(0.9, t + 0.3);
+    this.bassBus.gain.setValueAtTime(0.6, t + 0.3);
   }
 
   // ----- guitar -----
@@ -172,6 +178,50 @@ export class Engine {
       out[len - 1 - i] *= i / fade;
     }
     return buf;
+  }
+
+  // ----- bass -----
+
+  /** Saw + sine synth bass with a plucky filter envelope. */
+  bass(time: number, midi: number, vel: number, dur: number) {
+    const ctx = this.ctx;
+    const f = midiToFreq(midi);
+
+    const saw = ctx.createOscillator();
+    saw.type = 'sawtooth';
+    saw.frequency.value = f;
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.value = f;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.Q.value = 1.1;
+    filter.frequency.setValueAtTime(900, time);
+    filter.frequency.exponentialRampToValueAtTime(360, time + 0.09);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, time);
+    g.gain.linearRampToValueAtTime(vel, time + 0.006);
+    g.gain.setValueAtTime(vel, time + Math.max(0.006, dur));
+    g.gain.setTargetAtTime(0, time + Math.max(0.006, dur), 0.035);
+
+    const sawGain = ctx.createGain();
+    sawGain.gain.value = 0.55;
+    const subGain = ctx.createGain();
+    subGain.gain.value = 0.5;
+    saw.connect(sawGain);
+    sub.connect(subGain);
+    sawGain.connect(filter);
+    subGain.connect(filter);
+    filter.connect(g);
+    g.connect(this.bassBus);
+
+    const stop = time + dur + 0.3;
+    saw.start(time);
+    sub.start(time);
+    saw.stop(stop);
+    sub.stop(stop);
   }
 
   // ----- drums -----

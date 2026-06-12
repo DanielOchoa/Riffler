@@ -176,6 +176,7 @@ function ensureAudio() {
     player.loop = $<HTMLInputElement>('#t-loop').checked;
     player.countIn = $<HTMLInputElement>('#t-count').checked;
     player.clickOn = $<HTMLInputElement>('#t-click').checked;
+    player.bassOn = $<HTMLInputElement>('#t-bass').checked;
     player.guitarOn = $<HTMLInputElement>('#t-guitar').checked;
     player.ladder = ladderBox.checked;
     player.onStateChange = syncTransport;
@@ -275,6 +276,7 @@ bindToggle('#t-ladder', (on) => {
   else syncBpmDisplay();
 });
 bindToggle('#t-click', (on) => player && (player.clickOn = on));
+bindToggle('#t-bass', (on) => player && (player.bassOn = on));
 bindToggle('#t-guitar', (on) => player && (player.guitarOn = on));
 
 window.addEventListener('keydown', (e) => {

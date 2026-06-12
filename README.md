@@ -21,7 +21,7 @@ npm run dev      # → http://localhost:5173
    seeded — the URL hash is shareable / reload-safe).
 2. Use **VERSE** / **CHORUS** to loop just the section you're drilling.
 3. Drag the tempo down, turn **CLICK** on, and learn the shape.
-4. Turn **GUITAR** off to play the riff yourself over just drums.
+4. Turn **GUITAR** off to play the riff yourself over bass + drums.
 5. Turn **LADDER** on — it starts you around 70% of the suggested tempo and
    climbs +4 BPM every completed loop until you're back at full speed.
 

@@ -26,6 +26,7 @@ export class Player {
   countIn = true;
   clickOn = false;
   guitarOn = true;
+  bassOn = true;
   /** Tempo ladder: each completed loop climbs bpm toward ladderTarget. */
   ladder = false;
   ladderTarget: number | null = null;
@@ -143,6 +144,11 @@ export class Player {
     return v * (1 + (Math.random() - 0.5) * 2 * amt);
   }
 
+  /** Bass register: E1..D#2 (MIDI 28..39). */
+  private static bassMidi(pc: number): number {
+    return 28 + (((pc - 4) % 12) + 12) % 12;
+  }
+
   private tick() {
     const ctx = this.engine.ctx;
     while (this.nextTime < ctx.currentTime + LOOKAHEAD_SEC) {
@@ -199,6 +205,32 @@ export class Player {
     if (d.hat[within]) this.engine.hat(t + Player.slop(1.5), Player.hvel(d.hat[within], 0.12));
     // The click is the metronome: dead straight, on the grid, always.
     if (this.clickOn && within % 4 === 0) this.engine.click(time, within === 0);
+
+    // Bass: derived live from the kick pattern + chord roots (no stored line).
+    if (this.bassOn) {
+      const bar = Math.floor(step / STEPS_PER_BAR);
+      if (d.kick[within]) {
+        // Hold until the next kick in this bar (or the barline).
+        let gap = STEPS_PER_BAR - within;
+        for (let j = within + 1; j < STEPS_PER_BAR; j++) {
+          if (d.kick[j]) {
+            gap = j - within;
+            break;
+          }
+        }
+        const midi = Player.bassMidi(this.song.bars[bar].rootPc);
+        const vel = Player.hvel(0.5 + 0.4 * d.kick[within], 0.05);
+        this.engine.bass(t + Player.slop(1), midi, vel, gap * this.stepDur() * 0.9);
+      } else if (within === STEPS_PER_BAR - 1) {
+        // Chromatic approach into a chord change (region-aware wrap).
+        const nextStep = step + 1 >= this.regionEnd ? this.regionStart : step + 1;
+        const nextPc = this.song.bars[Math.floor(nextStep / STEPS_PER_BAR)].rootPc;
+        if (nextPc !== this.song.bars[bar].rootPc) {
+          const midi = Math.max(26, Player.bassMidi(nextPc) - 1);
+          this.engine.bass(t + Player.slop(1), midi, 0.55, this.stepDur() * 0.9);
+        }
+      }
+    }
 
     if (!this.guitarOn) return;
     const events = this.eventsByStep.get(step);

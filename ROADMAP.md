@@ -15,8 +15,8 @@ with a date.
   still open: loop any click-dragged bar range of the tab.
 - **Drop-D + alternate tunings** *(M)* — theory layer is already parameterized
   on `OPEN_MIDI`; drop-D unlocks real Audioslave/doom voicings.
-- **Bass + scratch layer** *(S/M)* — synth bass following chord roots so
-  guitar-off practice feels like a band; RATM-style dead-note scratches.
+- **Scratch layer** *(S)* — bass shipped; still open: RATM-style dead-note
+  guitar scratches ("chka") as a rhythm texture in heavy verses.
 - **Push/drag feel** *(S)* — swing + humanize shipped; still open: intentional
   per-vibe push (rushing) or drag (laying back) of whole instruments relative
   to the grid, e.g. snare a hair late for doom.
@@ -53,6 +53,10 @@ with a date.
 
 ## Shipped
 
+- 2026-06-11 — **Bass layer**: saw+sine synth bass derived live from the kick
+  pattern + chord roots (locks to kick velocity, holds until the next kick,
+  chromatic approach notes into chord changes). BASS toggle in the deck;
+  guitar-off practice now feels like a rhythm section.
 - 2026-06-11 — **Feel engine**: per-vibe swing (`swing`/`swingUnit` on Vibe —
   garage and doom swing 8ths, heavy swings 16ths, desert/micro stay straight)
   plus velocity + timing humanization at schedule time. The metronome click
