@@ -8,7 +8,7 @@
  *   ~  extend the previous event by one step
  *   .  rest
  */
-import type { VoicingKind } from './theory';
+import type { TuningId, VoicingKind } from './theory';
 
 export interface DrumPattern {
   kick: number[];
@@ -24,6 +24,7 @@ export interface Vibe {
   tip: string;
   hue: string; // accent color when this vibe is loaded
   tempo: [number, number];
+  tuning: TuningId;
   keys: number[]; // candidate key root pitch classes
   scale: number[]; // semitone offsets from the key root, for lick notes
   micro?: { degrees: number[]; chance: number }; // quarter-sharp inflections
@@ -53,6 +54,7 @@ export const VIBES: Vibe[] = [
     tip: 'All downstrokes. Dig in — the gaps are part of the stomp.',
     hue: '#e2422c',
     tempo: [104, 148],
+    tuning: 'standard',
     keys: [4, 9, 7], // E, A, G
     scale: [0, 3, 5, 7, 10], // minor pentatonic
     progressions: [
@@ -92,7 +94,8 @@ export const VIBES: Vibe[] = [
     tip: 'Lock to the kick. Palm-mute tight, let the accents bark.',
     hue: '#e0762b',
     tempo: [86, 112],
-    keys: [4, 2, 7], // E, D, G
+    tuning: 'dropD', // the Audioslave move: low-string riffs, one-finger 5ths
+    keys: [2, 4, 7], // D, E, G
     scale: [0, 3, 5, 6, 7, 10], // blues
     progressions: [[0], [0, 3, 0, 10], [0, 8, 10], [0, 6, 5]],
     rhythms: [
@@ -125,6 +128,7 @@ export const VIBES: Vibe[] = [
     tip: 'Keep the 8ths even and hypnotic. Hit “+” notes with a light bend.',
     hue: '#9ab83d',
     tempo: [118, 160],
+    tuning: 'standard',
     keys: [4, 9], // E, A
     scale: [0, 1, 4, 5, 7, 8, 10], // phrygian dominant
     micro: { degrees: [1, 8], chance: 0.55 },
@@ -165,6 +169,7 @@ export const VIBES: Vibe[] = [
     tip: 'Robot right hand: dead-even 8ths, zero swing, staccato.',
     hue: '#d9a441',
     tempo: [102, 126],
+    tuning: 'standard',
     keys: [4, 5, 7], // E, F, G
     scale: [0, 1, 3, 5, 6, 7, 10], // minor penta + b2 + b5
     progressions: [
@@ -203,7 +208,8 @@ export const VIBES: Vibe[] = [
     tip: 'Let chords bloom their full length. Count the silence.',
     hue: '#9a6fd0',
     tempo: [58, 84],
-    keys: [4, 9, 2], // E, A, D
+    tuning: 'dropD', // open low D = the heaviest note in the room
+    keys: [2, 4, 9], // D, E, A
     scale: [0, 3, 5, 6, 7, 10], // blues
     progressions: [
       [0, 6],

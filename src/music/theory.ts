@@ -1,5 +1,18 @@
-// Standard tuning, string 1 (high E) → string 6 (low E), as MIDI note numbers.
-export const OPEN_MIDI = [64, 59, 55, 50, 45, 40];
+// String 1 (high E) → string 6, as MIDI note numbers.
+export type TuningId = 'standard' | 'dropD';
+
+export const TUNINGS: Record<TuningId, number[]> = {
+  standard: [64, 59, 55, 50, 45, 40],
+  dropD: [64, 59, 55, 50, 45, 38],
+};
+
+export const TUNING_LABELS: Record<TuningId, { stamp: string; strings: string[] }> = {
+  standard: { stamp: 'STD TUNING (EADGBE)', strings: ['e', 'B', 'G', 'D', 'A', 'E'] },
+  dropD: { stamp: 'DROP D (DADGBE)', strings: ['e', 'B', 'G', 'D', 'A', 'D'] },
+};
+
+/** Standard tuning — kept for callers that don't vary by vibe (e.g. tests). */
+export const OPEN_MIDI = TUNINGS.standard;
 
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -18,8 +31,8 @@ export interface TabNote {
   micro: number; // 0 or 0.5 semitones
 }
 
-export function pitchOf(n: TabNote): number {
-  return OPEN_MIDI[n.str - 1] + n.fret + n.micro;
+export function pitchOf(n: TabNote, tuning: number[]): number {
+  return tuning[n.str - 1] + n.fret + n.micro;
 }
 
 export interface RootPos {
@@ -31,10 +44,10 @@ export interface RootPos {
  * Place a chord root (pitch class) on string 6 or 5, near the previous
  * anchor fret so progressions don't leap all over the neck.
  */
-export function placeRoot(pc: number, prevFret: number | null): RootPos {
+export function placeRoot(pc: number, prevFret: number | null, tuning: number[]): RootPos {
   const norm = (n: number) => ((n % 12) + 12) % 12;
-  const f6 = norm(pc - 4); // low E is pc 4
-  const f5 = norm(pc - 9); // A is pc 9
+  const f6 = norm(pc - tuning[5]);
+  const f5 = norm(pc - tuning[4]);
   const cands: RootPos[] = [];
   for (const f of [f6, f6 + 12]) if (f <= 11) cands.push({ str: 6, fret: f });
   for (const f of [f5, f5 + 12]) if (f <= 11) cands.push({ str: 5, fret: f });
@@ -42,8 +55,8 @@ export function placeRoot(pc: number, prevFret: number | null): RootPos {
   let best = cands[0];
   let bestScore = Infinity;
   for (const c of cands) {
-    const score =
-      Math.abs(c.fret - anchor) + (c.str === 5 ? 0.75 : 0) + (c.fret > 9 ? 1.5 : 0);
+    let score = Math.abs(c.fret - anchor) + (c.str === 5 ? 0.75 : 0) + (c.fret > 9 ? 1.5 : 0);
+    if (c.str === 6 && c.fret === 0) score -= 0.5; // the open low string is THE move
     if (score < bestScore) {
       bestScore = score;
       best = c;
@@ -52,14 +65,20 @@ export function placeRoot(pc: number, prevFret: number | null): RootPos {
   return best;
 }
 
-/** Power chord (root + fifth, optional octave) built on a root position. */
-export function powerChord(pos: RootPos, withOctave: boolean): TabNote[] {
+/**
+ * Power chord (root + fifth, optional octave) built on a root position.
+ * Fret offsets derive from the tuning's string intervals, so drop-D roots on
+ * string 6 come out as the one-finger same-fret barre.
+ */
+export function powerChord(pos: RootPos, withOctave: boolean, tuning: number[]): TabNote[] {
+  const open = (s: number) => tuning[s - 1];
+  const fifthFret = pos.fret + 7 - (open(pos.str - 1) - open(pos.str));
   const notes: TabNote[] = [
     { str: pos.str, fret: pos.fret, micro: 0 },
-    { str: pos.str - 1, fret: pos.fret + 2, micro: 0 },
+    { str: pos.str - 1, fret: fifthFret, micro: 0 },
   ];
   if (withOctave && pos.str - 2 >= 1) {
-    notes.push({ str: pos.str - 2, fret: pos.fret + 2, micro: 0 });
+    notes.push({ str: pos.str - 2, fret: pos.fret + 12 - (open(pos.str - 2) - open(pos.str)), micro: 0 });
   }
   return notes;
 }
@@ -124,12 +143,16 @@ export function chooseVoicing(
   palette: VoicingKind[],
   anchor: RootPos,
   withOctave: boolean,
+  tuning: number[],
 ): Voicing {
+  // Open cowboy shapes assume standard tuning; triads/high5 live on strings
+  // 4–3–2, which every supported tuning leaves alone.
+  const isStandard = tuning === TUNINGS.standard;
   for (const kind of palette) {
-    if (kind === 'open') {
+    if (kind === 'open' && isStandard) {
       const v = OPEN_VOICINGS.find((o) => o.rootPc === pc && o.quality === quality);
       if (v) return v;
-    } else if (kind === 'open-color') {
+    } else if (kind === 'open-color' && isStandard) {
       const v = OPEN_VOICINGS.find((o) => o.rootPc === pc && o.quality === 'sus');
       if (v) return v;
     } else if (kind === 'triad') {
@@ -143,6 +166,6 @@ export function chooseVoicing(
     name: noteName(pc) + '5',
     rootPc: pc,
     quality: 'pow',
-    notes: powerChord(anchor, withOctave),
+    notes: powerChord(anchor, withOctave, tuning),
   };
 }

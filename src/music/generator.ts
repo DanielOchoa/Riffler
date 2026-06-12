@@ -1,5 +1,5 @@
-import type { TabNote, RootPos, Voicing } from './theory';
-import { OPEN_MIDI, noteName, placeRoot, powerChord, chooseVoicing } from './theory';
+import type { TabNote, RootPos, TuningId, Voicing } from './theory';
+import { TUNINGS, noteName, placeRoot, powerChord, chooseVoicing } from './theory';
 import type { Vibe } from './vibes';
 
 export interface RiffEvent {
@@ -28,6 +28,7 @@ export interface Song {
   seed: number;
   keyPc: number;
   keyName: string;
+  tuning: TuningId;
   bpm: number;
   bars: BarInfo[];
   sections: SectionInfo[];
@@ -128,6 +129,7 @@ class LickWalker {
   constructor(
     private rng: () => number,
     private scale: number[],
+    private tuning: number[],
     private micro?: { degrees: number[]; chance: number },
   ) {}
 
@@ -150,7 +152,7 @@ class LickWalker {
     this.idx = Math.max(-2, Math.min(this.scale.length + 3, this.idx));
 
     let midi = rootMidi + this.offsetAt(this.idx);
-    while (midi < OPEN_MIDI[5]) midi += 12;
+    while (midi < this.tuning[5]) midi += 12;
 
     const note = this.place(midi, anchorFret);
     this.prevStr = note.str;
@@ -166,7 +168,7 @@ class LickWalker {
     let best: TabNote | null = null;
     let bestScore = Infinity;
     for (let str = 6; str >= 2; str--) {
-      const fret = midi - OPEN_MIDI[str - 1];
+      const fret = midi - this.tuning[str - 1];
       if (fret < 0 || fret > 13) continue;
       let score = Math.abs(fret - anchorFret);
       if (fret === 0) score *= 0.5; // open strings are always in reach
@@ -204,6 +206,7 @@ function generateSection(
   }
   const prog = vibe.progressions[progIdx];
   const barChordIdx = stretchProgression(rng, prog.length);
+  const tuning = TUNINGS[vibe.tuning];
 
   // Place each bar's chord root on the neck, near the previous one.
   const bars: BarInfo[] = [];
@@ -213,13 +216,13 @@ function generateSection(
   for (let b = 0; b < SECTION_BARS; b++) {
     const off = prog[barChordIdx[b]];
     const pc = (keyPc + off) % 12;
-    const pos = placeRoot(pc, prevFret);
+    const pos = placeRoot(pc, prevFret, tuning);
     prevFret = pos.fret;
     anchors.push(pos);
 
     if (type === 'chorus') {
       const quality = vibe.chordQuality?.[off] ?? OFFSET_QUALITY[off] ?? 'min';
-      const v = chooseVoicing(pc, quality, vibe.voicings, pos, vibe.octaveChord);
+      const v = chooseVoicing(pc, quality, vibe.voicings, pos, vibe.octaveChord, tuning);
       voicings.push(v);
       bars.push({ chordName: v.name, rootPc: pc });
     } else {
@@ -240,7 +243,7 @@ function generateSection(
 
   for (let b = 0; b < SECTION_BARS; b++) {
     const anchor = anchors[b];
-    const rootMidi = OPEN_MIDI[anchor.str - 1] + anchor.fret;
+    const rootMidi = tuning[anchor.str - 1] + anchor.fret;
     const rootNote: TabNote = { str: anchor.str, fret: anchor.fret, micro: 0 };
 
     for (const hit of parsePattern(patterns[b])) {
@@ -252,7 +255,7 @@ function generateSection(
 
       if (hit.ch === 'C' || hit.ch === 'c') {
         const v = voicings[b];
-        notes = v ? v.notes.map((n) => ({ ...n })) : powerChord(anchor, vibe.octaveChord);
+        notes = v ? v.notes.map((n) => ({ ...n })) : powerChord(anchor, vibe.octaveChord, tuning);
         kind = 'chord';
       } else if (hit.ch === 'X' || hit.ch === 'x') {
         notes = [{ ...rootNote }];
@@ -299,7 +302,7 @@ export function generate(vibe: Vibe, seed: number): Song {
 
   const keyPc = pick(rng, vibe.keys);
   const bpm = rint(rng, vibe.tempo[0], vibe.tempo[1]);
-  const walker = new LickWalker(rng, vibe.scale, vibe.micro);
+  const walker = new LickWalker(rng, vibe.scale, TUNINGS[vibe.tuning], vibe.micro);
 
   const verse = generateSection(vibe, rng, keyPc, 'verse', walker, null, null);
   const chorus = generateSection(
@@ -323,6 +326,7 @@ export function generate(vibe: Vibe, seed: number): Song {
     seed,
     keyPc,
     keyName: noteName(keyPc),
+    tuning: vibe.tuning,
     bpm,
     bars: [...verse.bars, ...chorus.bars],
     sections: [

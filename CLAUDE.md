@@ -33,10 +33,13 @@ vibes.ts ──recipe──▶ generator.ts ──Song──▶ tab.ts (SVG rend
 main.ts wires UI ◀── style.css (all theming, including SVG tab classes)
 ```
 
-- `src/music/theory.ts` — tuning, MIDI math, root placement, power chords,
-  and the chord-voicing library (open shapes, movable D/G/B triads, high 5th
-  stabs) with `chooseVoicing()` palette fallback. Strings are indexed
-  **1..6 where 6 = low E**; `OPEN_MIDI[str - 1]`.
+- `src/music/theory.ts` — tunings (`TUNINGS`: standard + dropD, selected per
+  vibe), MIDI math, root placement, power chords (fret offsets derive from
+  string intervals, so drop-D 5ths are same-fret barres), and the
+  chord-voicing library (open shapes, movable D/G/B triads, high 5th stabs)
+  with `chooseVoicing()` palette fallback. Strings are indexed **1..6 where
+  6 = lowest**; pitch = `tuning[str - 1] + fret`. Open cowboy voicings are
+  standard-tuning-only — `chooseVoicing` skips them in other tunings.
 - `src/music/vibes.ts` — one `Vibe` object per style: keys, scale, progression
   templates, verse + chorus rhythm patterns, voicing palette, drum grid, swing
   feel (`swing`, `swingUnit`), amp settings, accent color.

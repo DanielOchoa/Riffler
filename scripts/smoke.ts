@@ -5,7 +5,7 @@
  */
 import { VIBES } from '../src/music/vibes';
 import { generate, totalSteps, STEPS_PER_BAR } from '../src/music/generator';
-import { OPEN_MIDI } from '../src/music/theory';
+import { TUNINGS } from '../src/music/theory';
 
 let failures = 0;
 const check = (cond: boolean, msg: string) => {
@@ -16,6 +16,7 @@ const check = (cond: boolean, msg: string) => {
 };
 
 for (const vibe of VIBES) {
+  const tuning = TUNINGS[vibe.tuning];
   for (let seed = 1; seed <= 200; seed++) {
     const song = generate(vibe, seed * 2654435761);
     const steps = totalSteps(song);
@@ -42,7 +43,7 @@ for (const vibe of VIBES) {
         check(n.str >= 1 && n.str <= 6, `${vibe.id}/${seed}: string ${n.str}`);
         check(n.fret >= 0 && n.fret <= 15, `${vibe.id}/${seed}: fret ${n.fret}`);
         check(!(n.micro > 0 && n.fret === 0), `${vibe.id}/${seed}: micro on open string`);
-        check(OPEN_MIDI[n.str - 1] + n.fret >= 40, `${vibe.id}/${seed}: below low E`);
+        check(tuning[n.str - 1] + n.fret >= tuning[5], `${vibe.id}/${seed}: below low string`);
       }
     }
   }

@@ -4,6 +4,7 @@ import { generate, totalSteps, STEPS_PER_BAR, type Song } from './music/generato
 import { Engine } from './audio/engine';
 import { Player } from './audio/player';
 import { renderTab, moveCursor, hideCursor, type TabView } from './tab';
+import { TUNING_LABELS } from './music/theory';
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
@@ -129,6 +130,7 @@ function loadSong(s: Song) {
   seedOut.textContent = song.seed.toString(16).toUpperCase().padStart(8, '0');
   keyOut.textContent = `KEY ${song.keyName}m`;
   tempoOut.textContent = `♩=${song.bpm} SUGG.`;
+  $('#tuning-out').textContent = TUNING_LABELS[song.tuning].stamp;
   tipOut.textContent = vibe.tip;
 
   // Progression chips, grouped by section.

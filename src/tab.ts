@@ -1,5 +1,6 @@
 import type { Song, RiffEvent } from './music/generator';
 import { STEPS_PER_BAR, totalSteps } from './music/generator';
+import { TUNING_LABELS } from './music/theory';
 
 /**
  * Renders a song as a tab sheet, 2 bars per row, with section tags (VERSE /
@@ -21,7 +22,6 @@ const SECTION_PAD = 26; // extra space above a row that starts a section
 
 export const TAB_W = GUT + PAD * 2 + STEPS_PER_ROW * COL;
 
-const STRING_LABELS = ['e', 'B', 'G', 'D', 'A', 'E'];
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export interface TabView {
@@ -51,6 +51,7 @@ function stepX(stepInRow: number): number {
 export function renderTab(song: Song): TabView {
   const steps = totalSteps(song);
   const rows = Math.ceil(song.bars.length / BARS_PER_ROW);
+  const stringLabels = TUNING_LABELS[song.tuning].strings;
 
   // Rows that start a section get extra headroom for the section tag.
   const sectionAtRow = new Map<number, string>();
@@ -94,7 +95,7 @@ export function renderTab(song: Song): TabView {
     for (let s = 1; s <= 6; s++) {
       const sy = stringY(rowTop, s);
       svg.appendChild(
-        el('text', { x: GUT - 10, y: sy + 3.5, class: 'str-label', 'text-anchor': 'end' }, STRING_LABELS[s - 1]),
+        el('text', { x: GUT - 10, y: sy + 3.5, class: 'str-label', 'text-anchor': 'end' }, stringLabels[s - 1]),
       );
       svg.appendChild(
         el('line', { x1: GUT, y1: sy, x2: TAB_W - PAD + 6, y2: sy, class: 'staff-line' }),

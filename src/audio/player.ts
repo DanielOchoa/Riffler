@@ -2,7 +2,7 @@ import type { Engine } from './engine';
 import type { Song, RiffEvent } from '../music/generator';
 import { totalSteps, STEPS_PER_BAR } from '../music/generator';
 import type { Vibe } from '../music/vibes';
-import { pitchOf } from '../music/theory';
+import { pitchOf, TUNINGS } from '../music/theory';
 
 const LOOKAHEAD_SEC = 0.14;
 const TICK_MS = 25;
@@ -233,6 +233,7 @@ export class Player {
     }
 
     if (!this.guitarOn) return;
+    const tuning = TUNINGS[this.vibe.tuning];
     const events = this.eventsByStep.get(step);
     if (!events) return;
     for (const ev of events) {
@@ -249,7 +250,7 @@ export class Player {
       // Downstroke strum: low strings first.
       const notes = [...ev.notes].sort((a, b) => b.str - a.str);
       notes.forEach((n, i) => {
-        this.engine.pluck(evTime + i * strumGap, pitchOf(n), vel, ev.pm, hold);
+        this.engine.pluck(evTime + i * strumGap, pitchOf(n, tuning), vel, ev.pm, hold);
       });
     }
   }

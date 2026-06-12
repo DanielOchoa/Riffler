@@ -13,8 +13,8 @@ with a date.
 
 - **Arbitrary-region loop** *(S)* — the FULL/VERSE/CHORUS switcher shipped;
   still open: loop any click-dragged bar range of the tab.
-- **Drop-D + alternate tunings** *(M)* — theory layer is already parameterized
-  on `OPEN_MIDI`; drop-D unlocks real Audioslave/doom voicings.
+- **More tunings** *(S/M)* — drop-D shipped (heavy + doom). Still open: drop-C
+  / C-standard for sludge, or a user-facing tuning override per riff.
 - **Scratch layer** *(S)* — bass shipped; still open: RATM-style dead-note
   guitar scratches ("chka") as a rhythm texture in heavy verses.
 - **Push/drag feel** *(S)* — swing + humanize shipped; still open: intentional
@@ -53,6 +53,10 @@ with a date.
 
 ## Shipped
 
+- 2026-06-11 — **Drop-D tuning**: Heavy Groove and Doom Ritual now generate in
+  drop D — riffs live on the low string, power chords on a string-6 root come
+  out as the one-finger same-fret barre (fret offsets derive from string
+  intervals), tab labels and the tuning stamp follow the song.
 - 2026-06-11 — **Bass layer**: saw+sine synth bass derived live from the kick
   pattern + chord roots (locks to kick velocity, holds until the next kick,
   chromatic approach notes into chord changes). BASS toggle in the deck;
