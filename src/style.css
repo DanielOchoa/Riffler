@@ -273,11 +273,37 @@ main {
 }
 
 .bpm-group output {
+  display: inline-block;
   font-weight: 700;
   font-size: 16px;
   min-width: 3ch;
   text-align: right;
   color: var(--accent);
+}
+
+@keyframes bpm-pop {
+  0% {
+    transform: scale(1.4);
+    color: var(--bone);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+.bpm-group output.tick {
+  animation: bpm-pop 0.4s ease;
+}
+
+.bpm-goal {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  border: 1.5px dashed var(--accent);
+  padding: 2px 6px;
+  border-radius: 2px;
+  white-space: nowrap;
 }
 
 .chip {

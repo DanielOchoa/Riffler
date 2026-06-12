@@ -18,13 +18,19 @@ const COUNT_IN_STEPS = 16;
  * can drill just the verse or just the chorus. Count-in occupies the 16 steps
  * before regionStart.
  */
+const LADDER_BPM_PER_LOOP = 4;
+
 export class Player {
   bpm = 120;
   loop = true;
   countIn = true;
   clickOn = false;
   guitarOn = true;
+  /** Tempo ladder: each completed loop climbs bpm toward ladderTarget. */
+  ladder = false;
+  ladderTarget: number | null = null;
   onStateChange: (() => void) | null = null;
+  onBpmChange: (() => void) | null = null;
 
   private song: Song | null = null;
   private vibe: Vibe | null = null;
@@ -49,6 +55,7 @@ export class Player {
     this.song = song;
     this.vibe = vibe;
     this.bpm = song.bpm;
+    this.ladderTarget = song.bpm;
     this.regionStart = 0;
     this.regionEnd = totalSteps(song);
     this.engine.setTone({ drive: vibe.drive, brightness: vibe.brightness, level: vibe.level });
@@ -127,6 +134,10 @@ export class Player {
       if (this.step >= this.regionEnd) {
         if (this.loop) {
           this.step = this.regionStart;
+          if (this.ladder && this.ladderTarget !== null && this.bpm < this.ladderTarget) {
+            this.bpm = Math.min(this.ladderTarget, this.bpm + LADDER_BPM_PER_LOOP);
+            this.onBpmChange?.();
+          }
         } else {
           const msLeft = (this.nextTime - ctx.currentTime + 0.4) * 1000;
           if (this.timer !== null) window.clearInterval(this.timer);

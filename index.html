@@ -34,6 +34,7 @@
           <label for="bpm">TEMPO</label>
           <input type="range" id="bpm" min="50" max="200" step="1" value="120" />
           <output id="bpm-out" for="bpm">120</output>
+          <span class="bpm-goal" id="bpm-goal" hidden>↗ 120</span>
           <button id="bpm-reset" class="chip" title="Reset to suggested tempo">SUGG.</button>
         </div>
 
@@ -46,6 +47,7 @@
         <div class="toggles">
           <label class="toggle"><input type="checkbox" id="t-loop" checked /><span>LOOP</span></label>
           <label class="toggle"><input type="checkbox" id="t-count" checked /><span>COUNT-IN</span></label>
+          <label class="toggle" title="Each loop climbs the tempo toward the suggested BPM"><input type="checkbox" id="t-ladder" /><span>LADDER</span></label>
           <label class="toggle"><input type="checkbox" id="t-click" /><span>CLICK</span></label>
           <label class="toggle"><input type="checkbox" id="t-guitar" checked /><span>GUITAR</span></label>
         </div>

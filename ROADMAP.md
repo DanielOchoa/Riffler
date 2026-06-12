@@ -13,8 +13,6 @@ with a date.
 
 - **Arbitrary-region loop** *(S)* — the FULL/VERSE/CHORUS switcher shipped;
   still open: loop any click-dragged bar range of the tab.
-- **Tempo ladder** *(S)* — auto-trainer: start at 70%, +4 BPM every N clean
-  loops. Builds directly on the existing scheduler.
 - **Drop-D + alternate tunings** *(M)* — theory layer is already parameterized
   on `OPEN_MIDI`; drop-D unlocks real Audioslave/doom voicings.
 - **Bass + scratch layer** *(S/M)* — synth bass following chord roots so
@@ -54,6 +52,8 @@ with a date.
 
 ## Shipped
 
+- 2026-06-11 — **Tempo ladder**: LADDER toggle drops you to ~70% of the
+  suggested tempo and climbs +4 BPM every completed loop until target.
 - 2026-06-10 — **Song sections (verse–chorus)**: every song is now VERSE +
   CHORUS (4 bars each) with section tags on the sheet, grouped progression
   chips, and a FULL/VERSE/CHORUS loop switcher in the deck.

@@ -21,6 +21,8 @@ const tempoOut = $('#tempo-out');
 const progOut = $('#prog-out');
 const tipOut = $('#tip-out');
 const segEl = $('#seg-section');
+const ladderBox = $<HTMLInputElement>('#t-ladder');
+const bpmGoal = $('#bpm-goal');
 
 let engine: Engine | null = null;
 let player: Player | null = null;
@@ -95,6 +97,24 @@ function applyRegion() {
   player.setRegion(r.start, r.end);
 }
 
+// ----- tempo ladder -----
+
+function syncBpmDisplay() {
+  bpmOut.textContent = bpmSlider.value;
+  bpmGoal.hidden = !ladderBox.checked;
+  bpmGoal.textContent = `↗ ${song.bpm}`;
+}
+
+/** Starting rung: drop to ~70% of the suggested tempo unless already below. */
+function applyLadderStart() {
+  if (Number(bpmSlider.value) >= song.bpm) {
+    const start = Math.max(50, Math.round(song.bpm * 0.7));
+    bpmSlider.value = String(start);
+    if (player) player.bpm = start;
+  }
+  syncBpmDisplay();
+}
+
 // ----- song lifecycle -----
 
 function loadSong(s: Song) {
@@ -132,8 +152,9 @@ function loadSong(s: Song) {
   progOut.replaceChildren(...chips);
 
   bpmSlider.value = String(song.bpm);
-  bpmOut.textContent = String(song.bpm);
   if (player) player.bpm = song.bpm;
+  if (ladderBox.checked) applyLadderStart();
+  syncBpmDisplay();
 
   syncVibeCards();
   writeHash();
@@ -156,7 +177,15 @@ function ensureAudio() {
     player.countIn = $<HTMLInputElement>('#t-count').checked;
     player.clickOn = $<HTMLInputElement>('#t-click').checked;
     player.guitarOn = $<HTMLInputElement>('#t-guitar').checked;
+    player.ladder = ladderBox.checked;
     player.onStateChange = syncTransport;
+    player.onBpmChange = () => {
+      bpmSlider.value = String(player!.bpm);
+      syncBpmDisplay();
+      bpmOut.classList.remove('tick');
+      void bpmOut.offsetWidth; // restart the pop animation
+      bpmOut.classList.add('tick');
+    };
     player.setSong(song, vibe);
     player.bpm = Number(bpmSlider.value);
     applyRegion();
@@ -240,6 +269,11 @@ const bindToggle = (id: string, apply: (on: boolean) => void) => {
 };
 bindToggle('#t-loop', (on) => player && (player.loop = on));
 bindToggle('#t-count', (on) => player && (player.countIn = on));
+bindToggle('#t-ladder', (on) => {
+  if (player) player.ladder = on;
+  if (on) applyLadderStart();
+  else syncBpmDisplay();
+});
 bindToggle('#t-click', (on) => player && (player.clickOn = on));
 bindToggle('#t-guitar', (on) => player && (player.guitarOn = on));
 
