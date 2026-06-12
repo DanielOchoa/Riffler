@@ -33,6 +33,9 @@ export interface Vibe {
   chorusRhythms: string[]; // strummy, chord-forward patterns for the chorus
   voicings: VoicingKind[]; // chorus chord palette, in preference order
   chordQuality?: Record<number, 'maj' | 'min'>; // per-offset quality overrides
+  /** 0 = straight, 0.167 = full triplet swing. Applied to off-beats of swingUnit. */
+  swing: number;
+  swingUnit: 8 | 16;
   drums: DrumPattern;
   drive: number; // waveshaper intensity
   brightness: number; // post-drive lowpass Hz
@@ -68,6 +71,8 @@ export const VIBES: Vibe[] = [
     fills: ['l.l.l.l.l.l.l.l.', 'L~l.l.l~l.l.c~~~', 'l.l.x.x.l.l.X~~~'],
     chorusRhythms: ['C~~~C~~~C~~~C~~~', 'C~~~~~C~C~~~~~~~', 'C~C~C~C~C~C~C~C~'],
     voicings: ['open', 'power'],
+    swing: 0.07, // loose stomp
+    swingUnit: 8,
     drums: {
       kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
       snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -99,6 +104,8 @@ export const VIBES: Vibe[] = [
     fills: ['l~.l~.l~x.x.L~~~', 'l..l..l.l..l..X.', 'x.x.l.l.x.x.l~l~'],
     chorusRhythms: ['C~~~~~~.c.c.C~~~', 'C~~~~~c~C~~~~~c~', 'C~.c~.c~C~.c~.c~'],
     voicings: ['high5', 'triad'],
+    swing: 0.05, // greasy 16ths
+    swingUnit: 16,
     drums: {
       kick: [1, 0, 0, 0.8, 0, 0, 0.8, 0, 1, 0, 0, 0.8, 0, 0, 0.6, 0],
       snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -137,6 +144,8 @@ export const VIBES: Vibe[] = [
     chorusRhythms: ['C~~~c~c~C~~~c~c~', 'C~C~C~C~C~C~C~C~', 'C~~~c~C~~~c~C~~~'],
     voicings: ['triad', 'open'],
     chordQuality: { 0: 'maj', 1: 'maj' }, // phrygian dominant: i and bII are major
+    swing: 0, // motorik stays straight
+    swingUnit: 8,
     drums: {
       kick: [1, 0, 0, 0, 0, 0, 0.8, 0, 1, 0, 0, 0, 0, 0, 0.8, 0],
       snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -173,6 +182,8 @@ export const VIBES: Vibe[] = [
     fills: ['x.x.l.l.x.x.l.l.', 'l.l.x.x.l.l.x.x.', 'x.x.x.x.l.l.l.l.'],
     chorusRhythms: ['C~c~C~c~C~c~C~c~', 'C~~~C~c~C~~~C~c~', 'C~c~c~C~C~c~c~C~'],
     voicings: ['open-color', 'triad', 'power'],
+    swing: 0, // robot rock is straight by doctrine
+    swingUnit: 8,
     drums: {
       kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
       snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
@@ -209,6 +220,8 @@ export const VIBES: Vibe[] = [
     fills: ['l~~.l~~.l.l.C~~~', 'l~l~l~x.C~~~~~~~', 'C~~~~~~~l~l~l~l~'],
     chorusRhythms: ['C~~~~~~~C~~~~~~~', 'C~~~~~~~~~~~C~~~', 'C~~~~~c~c~~~C~~~'],
     voicings: ['power'], // full chords would be mud at this gain — and that's doom anyway
+    swing: 0.09, // the Iommi lilt
+    swingUnit: 8,
     drums: {
       kick: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0, 0, 0, 0, 0],
       snare: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],

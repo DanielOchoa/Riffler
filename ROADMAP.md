@@ -17,8 +17,9 @@ with a date.
   on `OPEN_MIDI`; drop-D unlocks real Audioslave/doom voicings.
 - **Bass + scratch layer** *(S/M)* — synth bass following chord roots so
   guitar-off practice feels like a band; RATM-style dead-note scratches.
-- **Feel engine** *(M)* — per-vibe swing amount, velocity humanization, slight
-  push/drag. Everything is machine-straight today.
+- **Push/drag feel** *(S)* — swing + humanize shipped; still open: intentional
+  per-vibe push (rushing) or drag (laying back) of whole instruments relative
+  to the grid, e.g. snare a hair late for doom.
 - **Real techniques** *(M)* — hammer-on/pull-off pairs, audible pitch bends
   (ramp the buffer playbackRate or render bent KS buffers), vibrato on doom
   sustains.
@@ -52,6 +53,10 @@ with a date.
 
 ## Shipped
 
+- 2026-06-11 — **Feel engine**: per-vibe swing (`swing`/`swingUnit` on Vibe —
+  garage and doom swing 8ths, heavy swings 16ths, desert/micro stay straight)
+  plus velocity + timing humanization at schedule time. The metronome click
+  stays dead straight on purpose.
 - 2026-06-11 — **Tempo ladder**: LADDER toggle drops you to ~70% of the
   suggested tempo and climbs +4 BPM every completed loop until target.
 - 2026-06-10 — **Song sections (verse–chorus)**: every song is now VERSE +

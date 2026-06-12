@@ -38,8 +38,8 @@ main.ts wires UI ◀── style.css (all theming, including SVG tab classes)
   stabs) with `chooseVoicing()` palette fallback. Strings are indexed
   **1..6 where 6 = low E**; `OPEN_MIDI[str - 1]`.
 - `src/music/vibes.ts` — one `Vibe` object per style: keys, scale, progression
-  templates, verse + chorus rhythm patterns, voicing palette, drum grid, amp
-  settings, accent color.
+  templates, verse + chorus rhythm patterns, voicing palette, drum grid, swing
+  feel (`swing`, `swingUnit`), amp settings, accent color.
 - `src/music/generator.ts` — seeded RNG (mulberry32); generates a VERSE and a
   CHORUS section (4 bars each), lick walker random-walks the scale near the
   chord-root anchor. Chord quality comes from `OFFSET_QUALITY` (aeolian

@@ -124,6 +124,25 @@ export class Player {
     return 60 / (this.bpm * 4);
   }
 
+  /** Seconds to delay this step for the vibe's swing feel (0 on downbeats). */
+  private swingDelay(step: number): number {
+    const v = this.vibe;
+    if (!v || v.swing <= 0) return 0;
+    const sd = this.stepDur();
+    if (v.swingUnit === 8) return step % 4 === 2 ? v.swing * 4 * sd : 0;
+    return step % 2 === 1 ? v.swing * 2 * sd : 0;
+  }
+
+  /** ±ms of timing slop. Playback feel only — never part of generation. */
+  private static slop(ms: number): number {
+    return ((Math.random() - 0.5) * 2 * ms) / 1000;
+  }
+
+  /** Velocity humanized by ±amt. */
+  private static hvel(v: number, amt: number): number {
+    return v * (1 + (Math.random() - 0.5) * 2 * amt);
+  }
+
   private tick() {
     const ctx = this.engine.ctx;
     while (this.nextTime < ctx.currentTime + LOOKAHEAD_SEC) {
@@ -171,10 +190,14 @@ export class Player {
     }
 
     const within = step % STEPS_PER_BAR;
+    // Swing pushes off-beats late; tiny slop keeps hits from being machine-perfect.
+    // The kick stays tightest — it's the anchor everyone else leans on.
+    const t = time + this.swingDelay(step);
     const d = this.vibe.drums;
-    if (d.kick[within]) this.engine.kick(time, d.kick[within]);
-    if (d.snare[within]) this.engine.snare(time, d.snare[within]);
-    if (d.hat[within]) this.engine.hat(time, d.hat[within]);
+    if (d.kick[within]) this.engine.kick(t + Player.slop(0.5), Player.hvel(d.kick[within], 0.04));
+    if (d.snare[within]) this.engine.snare(t + Player.slop(1), Player.hvel(d.snare[within], 0.06));
+    if (d.hat[within]) this.engine.hat(t + Player.slop(1.5), Player.hvel(d.hat[within], 0.12));
+    // The click is the metronome: dead straight, on the grid, always.
     if (this.clickOn && within % 4 === 0) this.engine.click(time, within === 0);
 
     if (!this.guitarOn) return;
@@ -186,13 +209,15 @@ export class Player {
       // means less saturation — the "roll the volume knob back" move. The amp's
       // compression keeps the loudness close.
       const chordScale = size >= 4 ? 0.45 : size === 3 ? 0.62 : 1;
-      const vel = (ev.accent ? 1 : 0.78) * chordScale;
+      const vel = Player.hvel((ev.accent ? 1 : 0.78) * chordScale, 0.05);
       const strumGap = size >= 4 ? 0.011 : 0.004;
       const hold = ev.durSteps * this.stepDur();
+      // One slop per event so strummed strings stay coherent.
+      const evTime = t + Player.slop(1.5);
       // Downstroke strum: low strings first.
       const notes = [...ev.notes].sort((a, b) => b.str - a.str);
       notes.forEach((n, i) => {
-        this.engine.pluck(time + i * strumGap, pitchOf(n), vel, ev.pm, hold);
+        this.engine.pluck(evTime + i * strumGap, pitchOf(n), vel, ev.pm, hold);
       });
     }
   }
