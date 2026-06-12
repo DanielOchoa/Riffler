@@ -34,8 +34,6 @@ with a date.
 
 - **Riff poster export** *(M)* — downloadable gig-poster PNG of the riff sheet
   (canvas render: title, stamps, tab, vibe art).
-- **Print-as-zine stylesheet** *(S)* — `@media print` so the sheet prints like
-  a photocopied tab zine for a music stand.
 - **Stage-light pulse** *(S)* — background vignette breathes with the kick,
   reduced-motion aware.
 - **Deeper vibe theming** *(M)* — beyond `--accent`: doom gets ink bleed,
@@ -51,6 +49,10 @@ with a date.
 
 ## Shipped
 
+- 2026-06-11 — **Print-as-zine**: `@media print` strips the app chrome and
+  prints the riff sheet as a monochrome one-pager (accent forced to ink, with
+  `!important` to beat the inline per-vibe accent), including the riff's
+  share URL so printed sheets stay re-findable.
 - 2026-06-11 — **Riff notebook**: ★ SAVE (or `S`) pins the current riff
   (vibe+seed) to localStorage; THE NOTEBOOK renders below the sheet as flyer
   cards with per-vibe accent spines — click to reload, ✕ to remove.

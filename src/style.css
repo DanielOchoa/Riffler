@@ -812,6 +812,67 @@ input[type='range']::-moz-range-thumb {
   color: rgb(236 227 209 / 45%);
 }
 
+/* ---------- print: the riff sheet as a photocopied zine page ---------- */
+
+.print-url {
+  display: none;
+}
+
+@media print {
+  :root {
+    --paper: #fff;
+    --paper-ink: #000;
+    /* !important so it beats the inline --accent set from JS per vibe. */
+    --accent: #000 !important; /* pure ink — like it came off the office copier */
+  }
+
+  body {
+    background: #fff;
+  }
+
+  body::after {
+    display: none; /* no film grain on paper */
+  }
+
+  .masthead,
+  .vibes,
+  .deck,
+  .notebook,
+  .foot,
+  .count-badge,
+  .stamp-btn {
+    display: none !important;
+  }
+
+  main {
+    max-width: none;
+    padding: 0;
+  }
+
+  .sheet {
+    box-shadow: none;
+    background: #fff;
+    padding: 0;
+    animation: none;
+  }
+
+  .tabwrap {
+    overflow: visible;
+  }
+
+  .tab-svg {
+    min-width: 0;
+  }
+
+  .print-url {
+    display: block;
+    margin: 6px 0 0;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: #000;
+  }
+}
+
 /* ---------- a11y / misc ---------- */
 
 :focus-visible {

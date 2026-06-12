@@ -43,6 +43,7 @@ function readHash(): { v: string | null; s: number | null } {
 
 function writeHash() {
   history.replaceState(null, '', `#v=${vibe.id}&s=${song.seed.toString(16)}`);
+  $('#print-url').textContent = location.href; // printed sheets stay re-findable
 }
 
 // ----- vibe cards -----
