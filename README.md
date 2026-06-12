@@ -24,8 +24,10 @@ npm run dev      # → http://localhost:5173
 4. Turn **GUITAR** off to play the riff yourself over bass + drums.
 5. Turn **LADDER** on — it starts you around 70% of the suggested tempo and
    climbs +4 BPM every completed loop until you're back at full speed.
+6. Hit **★ SAVE** to pin a keeper to THE NOTEBOOK (stored in localStorage);
+   click any saved flyer to pull it back up.
 
-Keyboard: `SPACE` play/stop · `N` new riff · `↑/↓` tempo.
+Keyboard: `SPACE` play/stop · `N` new riff · `S` save · `↑/↓` tempo.
 
 ## How it works
 

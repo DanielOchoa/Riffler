@@ -691,6 +691,112 @@ input[type='range']::-moz-range-thumb {
   color: var(--accent);
 }
 
+/* ---------- the notebook (saved riffs) ---------- */
+
+.stamp-btn {
+  font-family: var(--font-mono);
+  background: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.stamp-btn:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.stamp-btn.saved {
+  background: var(--accent);
+  color: var(--paper);
+}
+
+.notebook {
+  margin-top: 30px;
+}
+
+.nb-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 0.04em;
+  color: var(--bone);
+}
+
+.nb-title::before,
+.nb-title::after {
+  content: '';
+  height: 8px;
+  flex: 1;
+  background: repeating-linear-gradient(-45deg, rgb(236 227 209 / 30%) 0 7px, transparent 7px 14px);
+}
+
+.nb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.nb-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 26px 11px 14px;
+  text-align: left;
+  background: var(--ink-2);
+  border: 2px solid rgb(236 227 209 / 25%);
+  border-left: 5px solid var(--card-accent, var(--accent));
+  color: var(--bone);
+  font-family: var(--font-mono);
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--shadow);
+  transition: transform 0.12s ease, border-color 0.2s;
+}
+
+.nb-card:hover {
+  transform: translateY(-2px) rotate(-0.4deg);
+  border-color: rgb(236 227 209 / 55%);
+}
+
+.nb-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--card-accent, var(--accent));
+}
+
+.nb-no {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.nb-meta {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--bone-dim);
+}
+
+.nb-chords {
+  font-size: 10px;
+  color: rgb(236 227 209 / 75%);
+  font-style: italic;
+}
+
+.nb-x {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 11px;
+  color: var(--bone-dim);
+  padding: 2px 4px;
+}
+
+.nb-x:hover {
+  color: var(--accent);
+}
+
 /* ---------- footer ---------- */
 
 .foot {

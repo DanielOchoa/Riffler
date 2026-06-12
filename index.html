@@ -63,6 +63,7 @@
             <span class="stamp" id="key-out">KEY E</span>
             <span class="stamp" id="tempo-out">♩=120</span>
             <span class="stamp stamp-dim" id="tuning-out">STD TUNING (EADGBE)</span>
+            <button class="stamp stamp-btn" id="save" title="Save this riff to the notebook">★ SAVE</button>
           </div>
         </div>
         <div class="prog-row" id="prog-out"></div>
@@ -74,10 +75,15 @@
           &nbsp;·&nbsp; / = slide in &nbsp;·&nbsp; bold = accent &nbsp;·&nbsp; 𝄆 𝄇 = loops
         </p>
       </section>
+
+      <section class="notebook" id="notebook" hidden aria-label="Saved riffs">
+        <h2 class="nb-title">THE NOTEBOOK</h2>
+        <div class="nb-grid" id="nb-grid"></div>
+      </section>
     </main>
 
     <footer class="foot">
-      <span>[SPACE] play/stop · [N] new riff · [↑/↓] tempo</span>
+      <span>[SPACE] play/stop · [N] new riff · [S] save · [↑/↓] tempo</span>
       <span>all audio synthesized live in your browser — no samples, no backend</span>
     </footer>
 

@@ -36,8 +36,6 @@ with a date.
   (canvas render: title, stamps, tab, vibe art).
 - **Print-as-zine stylesheet** *(S)* — `@media print` so the sheet prints like
   a photocopied tab zine for a music stand.
-- **Riff notebook** *(M)* — favorited riffs (vibe+seed in localStorage)
-  browsed as a wall of torn flyers.
 - **Stage-light pulse** *(S)* — background vignette breathes with the kick,
   reduced-motion aware.
 - **Deeper vibe theming** *(M)* — beyond `--accent`: doom gets ink bleed,
@@ -53,6 +51,9 @@ with a date.
 
 ## Shipped
 
+- 2026-06-11 — **Riff notebook**: ★ SAVE (or `S`) pins the current riff
+  (vibe+seed) to localStorage; THE NOTEBOOK renders below the sheet as flyer
+  cards with per-vibe accent spines — click to reload, ✕ to remove.
 - 2026-06-11 — **Drop-D tuning**: Heavy Groove and Doom Ritual now generate in
   drop D — riffs live on the low string, power chords on a string-6 root come
   out as the one-finger same-fret barre (fret offsets derive from string

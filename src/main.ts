@@ -116,6 +116,115 @@ function applyLadderStart() {
   syncBpmDisplay();
 }
 
+// ----- riff notebook (localStorage) -----
+
+interface NotebookEntry {
+  vibeId: string;
+  seed: number;
+  key: string;
+  bpm: number;
+  chords: string;
+  savedAt: number;
+}
+
+const NB_KEY = 'riffler.notebook.v1';
+const NB_MAX = 30;
+const saveBtn = $<HTMLButtonElement>('#save');
+const notebookEl = $('#notebook');
+const nbGrid = $('#nb-grid');
+
+function loadNotebook(): NotebookEntry[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(NB_KEY) ?? '[]');
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistNotebook(list: NotebookEntry[]) {
+  localStorage.setItem(NB_KEY, JSON.stringify(list));
+}
+
+function chordSummary(s: Song): string {
+  const sec = (start: number, count: number) => {
+    const names: string[] = [];
+    for (let i = start; i < start + count; i++) {
+      const name = s.bars[i].chordName;
+      if (names[names.length - 1] !== name) names.push(name);
+    }
+    return names.join('·');
+  };
+  return s.sections.map((x) => sec(x.startBar, x.barCount)).join(' — ');
+}
+
+function isSaved(): boolean {
+  return loadNotebook().some((e) => e.vibeId === song.vibeId && e.seed === song.seed);
+}
+
+function syncSaveBtn() {
+  const saved = isSaved();
+  saveBtn.textContent = saved ? '★ IN BOOK' : '★ SAVE';
+  saveBtn.classList.toggle('saved', saved);
+}
+
+function saveCurrentRiff() {
+  if (isSaved()) return;
+  const list = loadNotebook();
+  list.unshift({
+    vibeId: song.vibeId,
+    seed: song.seed,
+    key: song.keyName,
+    bpm: song.bpm,
+    chords: chordSummary(song),
+    savedAt: Date.now(),
+  });
+  persistNotebook(list.slice(0, NB_MAX));
+  syncSaveBtn();
+  renderNotebook();
+}
+
+function removeRiff(entry: NotebookEntry) {
+  persistNotebook(loadNotebook().filter((e) => !(e.vibeId === entry.vibeId && e.seed === entry.seed)));
+  syncSaveBtn();
+  renderNotebook();
+}
+
+function renderNotebook() {
+  const list = loadNotebook();
+  notebookEl.hidden = list.length === 0;
+  nbGrid.replaceChildren(
+    ...list.map((entry) => {
+      const v = vibeById(entry.vibeId);
+      const card = document.createElement('button');
+      card.className = 'nb-card';
+      card.style.setProperty('--card-accent', v.hue);
+      const date = new Date(entry.savedAt)
+        .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        .toUpperCase();
+      card.innerHTML = `
+        <span class="nb-name">${v.name}</span>
+        <span class="nb-no">№ ${entry.seed.toString(16).toUpperCase().padStart(8, '0')}</span>
+        <span class="nb-meta">KEY ${entry.key}m · ♩=${entry.bpm} · ${date}</span>
+        <span class="nb-chords">${entry.chords}</span>
+        <span class="nb-x" title="Remove from notebook" aria-label="Remove">✕</span>
+      `;
+      card.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).classList.contains('nb-x')) {
+          removeRiff(entry);
+          return;
+        }
+        const wasPlaying = player?.playing ?? false;
+        player?.stop();
+        vibe = v;
+        loadSong(generate(vibe, entry.seed));
+        if (wasPlaying) startPlayback();
+      });
+      return card;
+    }),
+  );
+}
+
 // ----- song lifecycle -----
 
 function loadSong(s: Song) {
@@ -159,6 +268,7 @@ function loadSong(s: Song) {
   syncBpmDisplay();
 
   syncVibeCards();
+  syncSaveBtn();
   writeHash();
 }
 
@@ -247,6 +357,7 @@ playBtn.addEventListener('click', () => {
   player!.toggle();
 });
 newBtn.addEventListener('click', newRiff);
+saveBtn.addEventListener('click', saveCurrentRiff);
 
 segEl.querySelectorAll<HTMLButtonElement>('.seg-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -290,6 +401,8 @@ window.addEventListener('keydown', (e) => {
     player!.toggle();
   } else if (e.key === 'n' || e.key === 'N') {
     newRiff();
+  } else if (e.key === 's' || e.key === 'S') {
+    saveCurrentRiff();
   } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !onControl) {
     e.preventDefault();
     const delta = e.key === 'ArrowUp' ? 2 : -2;
@@ -304,4 +417,5 @@ buildVibeCards();
 const hash = readHash();
 if (hash.v) vibe = vibeById(hash.v);
 loadSong(generate(vibe, hash.s ?? (Math.random() * 0xffffffff) >>> 0));
+renderNotebook();
 requestAnimationFrame(frame);
