@@ -53,6 +53,12 @@ main.ts wires UI ◀── style.css (all theming, including SVG tab classes)
   recent step→time anchors so the UI can interpolate a smooth playhead.
 - `src/tab.ts` — SVG tab renderer; exports geometry (`posToXY`) for the cursor.
 - `src/main.ts` — DOM wiring, URL hash, keyboard shortcuts, rAF loop.
+- `src/analytics.ts` — thin `track()` wrapper over the Umami tag in
+  `index.html`; no-ops when the script is absent (dev/preview/ad-block), and
+  the tag's `data-domains` keeps non-production hosts from sending. Custom
+  events: `play`, `new-riff`, `save-riff`, `vibe-select`, `guitar-toggle`,
+  `ladder-toggle` (each carries the current `vibe`); pageviews are automatic.
+  The Website ID in `index.html` is a placeholder until swapped for a real one.
 
 ## Invariants — break these and things get weird
 

@@ -5,6 +5,7 @@ import { Engine } from './audio/engine';
 import { Player } from './audio/player';
 import { renderTab, moveCursor, hideCursor, type TabView } from './tab';
 import { TUNING_LABELS } from './music/theory';
+import { track } from './analytics';
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
@@ -64,7 +65,8 @@ function buildVibeCards() {
     card.addEventListener('click', () => {
       if (vibe.id !== v.id) {
         vibe = v;
-        newRiff();
+        track('vibe-select', { vibe: v.id });
+        newRiff('vibe');
       }
     });
     vibesEl.appendChild(card);
@@ -183,6 +185,7 @@ function saveCurrentRiff() {
   persistNotebook(list.slice(0, NB_MAX));
   syncSaveBtn();
   renderNotebook();
+  track('save-riff', { vibe: song.vibeId });
 }
 
 function removeRiff(entry: NotebookEntry) {
@@ -273,11 +276,12 @@ function loadSong(s: Song) {
   writeHash();
 }
 
-function newRiff() {
+function newRiff(source: 'button' | 'key' | 'vibe' = 'button') {
   const wasPlaying = player?.playing ?? false;
   player?.stop();
   loadSong(generate(vibe, (Math.random() * 0xffffffff) >>> 0));
   if (wasPlaying) startPlayback();
+  track('new-riff', { vibe: vibe.id, source });
 }
 
 // ----- playback -----
@@ -309,6 +313,15 @@ function ensureAudio() {
 function startPlayback() {
   ensureAudio();
   player!.start();
+}
+
+function togglePlayback() {
+  ensureAudio();
+  const wasPlaying = player!.playing;
+  player!.toggle();
+  if (!wasPlaying && player!.playing) {
+    track('play', { vibe: vibe.id, section: String(selectedSection) });
+  }
 }
 
 function syncTransport() {
@@ -353,11 +366,8 @@ function frame() {
 
 // ----- controls -----
 
-playBtn.addEventListener('click', () => {
-  ensureAudio();
-  player!.toggle();
-});
-newBtn.addEventListener('click', newRiff);
+playBtn.addEventListener('click', togglePlayback);
+newBtn.addEventListener('click', () => newRiff('button'));
 saveBtn.addEventListener('click', saveCurrentRiff);
 
 segEl.querySelectorAll<HTMLButtonElement>('.seg-btn').forEach((btn) => {
@@ -388,20 +398,23 @@ bindToggle('#t-ladder', (on) => {
   if (player) player.ladder = on;
   if (on) applyLadderStart();
   else syncBpmDisplay();
+  track('ladder-toggle', { on });
 });
 bindToggle('#t-click', (on) => player && (player.clickOn = on));
 bindToggle('#t-bass', (on) => player && (player.bassOn = on));
-bindToggle('#t-guitar', (on) => player && (player.guitarOn = on));
+bindToggle('#t-guitar', (on) => {
+  if (player) player.guitarOn = on;
+  track('guitar-toggle', { on });
+});
 
 window.addEventListener('keydown', (e) => {
   // Let focused buttons/inputs keep their native Space behavior (no double-toggle).
   const onControl = e.target instanceof HTMLButtonElement || e.target instanceof HTMLInputElement;
   if (e.code === 'Space' && !onControl) {
     e.preventDefault();
-    ensureAudio();
-    player!.toggle();
+    togglePlayback();
   } else if (e.key === 'n' || e.key === 'N') {
-    newRiff();
+    newRiff('key');
   } else if (e.key === 's' || e.key === 'S') {
     saveCurrentRiff();
   } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !onControl) {

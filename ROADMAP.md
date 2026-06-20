@@ -49,6 +49,11 @@ with a date.
 
 ## Shipped
 
+- 2026-06-20 — **Analytics**: privacy-friendly Umami tag (cookieless, no
+  consent banner) in `index.html` plus a `track()` helper in `analytics.ts`.
+  Pageviews are automatic; custom events cover plays, new-riff (with source),
+  saves, vibe selection, and guitar-off / tempo-ladder usage. Needs the real
+  Umami Website ID pasted into `index.html` before it reports.
 - 2026-06-11 — **Print-as-zine**: `@media print` strips the app chrome and
   prints the riff sheet as a monochrome one-pager (accent forced to ink, with
   `!important` to beat the inline per-vibe accent), including the riff's
