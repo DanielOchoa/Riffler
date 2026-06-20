@@ -74,6 +74,25 @@ body::after {
   text-transform: uppercase;
 }
 
+/* source-on-github link, inline at the end of the masthead credit line */
+.gh-link {
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.gh-link svg {
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+  vertical-align: -1.5px;
+}
+
+.gh-link:hover {
+  color: var(--accent);
+}
+
 .brand {
   margin: 0;
   font-family: var(--font-display);

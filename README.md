@@ -2,6 +2,10 @@
   <img src="assets/riffler.jpg" alt="RIFFLER" width="700" />
 </p>
 
+<p align="center">
+  <a href="https://riffler.online"><strong>▶&nbsp; Play it live at riffler.online</strong></a>
+</p>
+
 Vibe-to-riff practice engine. Pick a vibe (garage stomp, heavy groove,
 microtonal psych, desert fuzz, doom ritual), get a generated verse–chorus
 song — riffy verse, fuller chord voicings in the chorus — as guitar tab with
